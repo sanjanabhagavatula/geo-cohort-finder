@@ -3,3 +3,5 @@ __pycache__/
 .pytest_cache/
 output/
 output_*/
+.DS_Store
+**/.DS_Store
