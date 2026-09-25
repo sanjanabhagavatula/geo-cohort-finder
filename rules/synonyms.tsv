@@ -1,0 +1,15 @@
+kind	canonical	synonyms
+disease	HNSCC	HNSCC;HNSC;SCCHN;head and neck cancer;head and neck squamous cell carcinoma;squamous cell carcinoma of the head and neck;oral cancer
+disease	oral squamous cell carcinoma	oral squamous cell carcinoma;OSCC;oral cavity carcinoma;oral cavity squamous cell carcinoma
+disease	oropharyngeal carcinoma	oropharyngeal carcinoma;oropharyngeal cancer;oropharyngeal squamous cell carcinoma;OPSCC
+disease	melanoma	melanoma;cutaneous melanoma;metastatic melanoma
+disease	NSCLC	NSCLC;non-small cell lung cancer;non-small-cell lung cancer;lung adenocarcinoma;lung squamous cell carcinoma
+disease	urothelial carcinoma	urothelial carcinoma;bladder cancer;urothelial cancer;bladder carcinoma
+drug	pembrolizumab	pembrolizumab;Keytruda;MK-3475;lambrolizumab
+drug	nivolumab	nivolumab;Opdivo;BMS-936558;ONO-4538
+drug	atezolizumab	atezolizumab;Tecentriq;MPDL3280A
+drug	durvalumab	durvalumab;Imfinzi;MEDI4736
+drug	ipilimumab	ipilimumab;Yervoy;MDX-010
+drug	cetuximab	cetuximab;Erbitux;C225
+drug	cisplatin	cisplatin;CDDP
+drug	immune checkpoint inhibitor	immune checkpoint inhibitor;immune checkpoint blockade;ICI;anti-PD-1;anti-PD-L1;anti-CTLA-4;pembrolizumab;nivolumab;atezolizumab;durvalumab;ipilimumab

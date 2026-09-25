@@ -1,0 +1,10 @@
+omics	gds_types
+transcriptomic	Expression profiling by array;Expression profiling by high throughput sequencing
+transcriptomics	Expression profiling by array;Expression profiling by high throughput sequencing
+rna-seq	Expression profiling by high throughput sequencing
+microarray	Expression profiling by array
+single-cell	Expression profiling by high throughput sequencing
+methylation	Methylation profiling by array;Methylation profiling by high throughput sequencing
+proteomics	Protein profiling by protein array;Protein profiling by Mass Spec
+chip-seq	Genome binding/occupancy profiling by high throughput sequencing
+copy number	Genome variation profiling by array;Genome variation profiling by high throughput sequencing

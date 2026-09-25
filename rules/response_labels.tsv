@@ -1,0 +1,25 @@
+source	mapped
+cr	CR
+complete response	CR
+pr	PR
+partial response	PR
+sd	SD
+stable disease	SD
+pd	PD
+progressive disease	PD
+r	RESPONDER_UNSPECIFIED
+responder	RESPONDER_UNSPECIFIED
+yes	RESPONDER_UNSPECIFIED
+nr	NONRESPONDER_UNSPECIFIED
+non-responder	NONRESPONDER_UNSPECIFIED
+nonresponder	NONRESPONDER_UNSPECIFIED
+non responder	NONRESPONDER_UNSPECIFIED
+no	NONRESPONDER_UNSPECIFIED
+sensitive	SENSITIVE
+resistant	RESISTANT
+na	NOT_AVAILABLE
+n/a	NOT_AVAILABLE
+not available	NOT_AVAILABLE
+not evaluable	NOT_AVAILABLE
+ne	NOT_AVAILABLE
+unknown	NOT_AVAILABLE

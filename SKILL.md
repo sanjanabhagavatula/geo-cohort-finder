@@ -57,13 +57,10 @@ metadata:
   dependencies:
     python: ">=3.10"
     packages:
-      - pandas>=2.0
       - requests>=2.31
   demo_data:
-    - path: demo_data/esummary_hnscc.json
-      description: Cached GEO esummary records, offline
-    - path: demo_data/samples_hnscc.json
-      description: Cached sample-level metadata, offline
+    - path: demo_data/cache/
+      description: Cached network responses for the HNSCC transcriptomics demo query, offline
   endpoints:
     cli: python skills/geo-cohort-finder/geo_cohort_finder.py --question "{question}" --disease "{disease}" --output {output_dir}
   openclaw:
@@ -234,8 +231,9 @@ supplied by the agent is not searched.
 
 ### Stage boundaries
 
-Stages have very different costs and failure modes, so each writes its output
-to disk and later stages read from it. A run can resume from any stage.
+Stages have very different costs and failure modes. Every network response is
+cached, so `--resume` re-runs all stages from the recorded query and the cache,
+repeating only requests that never completed.
 
 | Stage (`--stage`) | Method | Cost | Output |
 |---|---|---|---|
@@ -248,8 +246,9 @@ to disk and later stages read from it. A run can resume from any stage.
 | `score` | local rules | instant | `tables/cohorts.tsv` |
 
 **Series cap.** Only the first `MAX_SERIES` candidates (default **10**) that
-pass the prefilter are characterized and cross-checked. Candidates are taken in
-the order `esearch` returns them; the ordering, the cap and the number of
+pass the prefilter are characterized and cross-checked. Series with a linked
+PubMed ID are taken first, then the rest; within each group, in the order
+`esearch` returns them (newest first). The ordering, the cap and the number of
 candidates not characterized are all stated in the report. Raise the cap with
 `--max-series` once the pipeline is validated.
 
@@ -281,7 +280,8 @@ python geo_cohort_finder.py \
 
 # Add search terms beyond the synonym table (recorded as source: agent)
 python geo_cohort_finder.py --question "..." --disease HNSCC \
-    --extra-terms "oropharyngeal carcinoma;laryngeal carcinoma"
+    --extra-terms "oropharyngeal carcinoma;laryngeal carcinoma" \
+    --drug pembrolizumab --extra-drug-terms "anti-PD-1"
 
 # Characterize more than the default 10 series
 python geo_cohort_finder.py --question "..." --disease HNSCC --max-series 50
@@ -289,8 +289,8 @@ python geo_cohort_finder.py --question "..." --disease HNSCC --max-series 50
 # Demo mode (cached records, no network)
 python geo_cohort_finder.py --demo
 
-# Resume from a completed stage
-python geo_cohort_finder.py --resume --stage characterize --output output/
+# Resume: reuse the recorded query and every cached response in output/
+python geo_cohort_finder.py --resume --output output/
 
 # Via ClawBio runner
 python clawbio.py run geo-cohort-finder --demo
@@ -350,10 +350,19 @@ xenograft" is classed as `model`, not `patient_tumor`.
 | Precedence | Pattern in `source_name` / `characteristics` | Class |
 |---|---|---|
 | 1 | `PDX`, `patient-derived xenograft`, `xenograft`, `organoid` | `model` |
-| 2 | a `cell line:` characteristic key; the phrase `cell line`; a name in `rules/cell_lines.tsv` | `cell_line` |
+| 2 | a `cell line:` characteristic whose value is a line identifier (`HN-SCC-151`, `JHU-06`); the phrase `cell line` in a value; a name in `rules/cell_lines.tsv` | `cell_line` |
 | 3 | `siRNA`, `shRNA`, `knockout`, `overexpress`, `treated ... for Nh` | `perturbation` |
-| 4 | `tumor biopsy`, `patient`, `primary tumor`, `FFPE`, `resection` | `patient_tumor` |
+| 4 | `peripheral blood`, `blood`, `PBMC`, `plasma`, `serum`, `saliva`, `adjacent normal`, `normal tissue/mucosa`, `lymph node` | `patient_other` |
+| 5 | `tumor biopsy`, `patient`, `primary tumor`, `FFPE`, `resection`, `tumor`, `carcinoma`, `cancer`, `neoplasm` | `patient_tumor` |
 | — | no match | `NEEDS_REVIEW` |
+
+Patterns are matched against characteristic **values**, source name and title,
+never against characteristic keys: submitters misuse keys (`cell line: T cells`
+on patient tumor samples). A `cell line:` key counts only when its value looks
+like a line identifier, not a cell type. `patient_tumor` and `patient_other`
+both count as patient data; the split is reported in `sample_type`. Samples
+whose stated organism differs from `--organism` are excluded before
+classification.
 
 Named cell lines (`CAL27`, `FaDu`, `SCC-25`, ...) live in `rules/cell_lines.tsv`,
 not in this document, so other cancer types can be added without editing code.
@@ -406,6 +415,12 @@ dcb:     responder = CR + PR + SD*     nonresponder = PD
          (* durable stable disease, where duration is recorded)
 ```
 
+Response duration is not parsed in this version, so the `dcb` counts are
+`unknown` whenever any SD is present, and equal `strict` when there is none.
+Study-defined labels (`RESPONDER_UNSPECIFIED`/`SENSITIVE` vs
+`NONRESPONDER_UNSPECIFIED`/`RESISTANT`) fill the strict arms directly.
+`NOT_AVAILABLE` values (`NA`, `not evaluable`, ...) are excluded from counts.
+
 Stable disease is the pivot: a patient stable for 14 months falls in opposite
 groups under the two rules, and published studies use both. **Do not silently
 convert clinical outcome categories into binary response groups.** Any
@@ -430,6 +445,7 @@ listed in `verdict_reason`.
 
 | Order | Verdict | Condition | Applies to |
 |---|---|---|---|
+| 0 | `WRONG_ORGANISM` | no sample is from `--organism` (e.g. a mouse SubSeries of a human SuperSeries) | both |
 | 1 | `WRONG_SAMPLE_TYPE` | every sample is `cell_line`, `model` or `perturbation` | both |
 | 2 | `THERAPY_UNCONFIRMED` | a drug was requested and no sample-level field names it (series text only) | both, if drug given |
 | 3 | `SURVIVAL_ONLY` | no response field, but a survival field is present | `response` |
@@ -455,9 +471,19 @@ metadata — they may exist in the paper or its supplements.
 
 ### Patient counts
 
-`n_samples` is the deposited sample count. `n_patients` is derived from
-patient or subject identifiers in sample characteristics where present, and is
-otherwise `unknown` — never assumed equal to `n_samples`.
+`n_samples` is the deposited sample count. `n_patients` is derived in this
+order, and `n_patients_basis` records which rule applied:
+
+| Basis | Rule |
+|---|---|
+| `patient_id` | every patient sample has a patient/subject/donor ID; count distinct IDs |
+| `assumed_one_per_sample` | **no** sample has a patient ID, **and** there is no timepoint field, **and** the series is not single-cell; count patient samples |
+| `unknown` | anything else: some samples lack IDs, repeated sampling, or single-cell |
+
+The assumption is stated in `verdict_reason` and the report whenever it is
+used. Most GEO bulk studies deposit one sample per patient without an ID
+field; the assumption fails for undeclared paired designs, which is why it is
+never silent.
 
 Paired designs (pre- and on-treatment biopsies) and single-cell studies both
 inflate sample count relative to patient count, in opposite magnitudes.
@@ -482,9 +508,11 @@ expression table is not read. From it the skill takes, per sample:
   file per platform (`GSExxxxxx-GPLyyyy_series_matrix.txt.gz`). All are fetched
   from the `matrix/` directory listing and their samples combined, with
   `platform` kept per sample.
-- **SuperSeries** have no matrix of their own. They are reported with
-  `verdict_reason = "SuperSeries; see SubSeries"` and their SubSeries are
-  characterized instead, counted against `MAX_SERIES`.
+- **SuperSeries** are detected from GEO's standard summary sentence ("This
+  SuperSeries is composed of the SubSeries listed below"). They get verdict
+  `SUPERSERIES` with the SubSeries listed in `verdict_reason`, are not counted
+  against `MAX_SERIES`, and their SubSeries are characterized next, counted
+  against `MAX_SERIES`.
 - **Missing matrix** (rare, older or unusual series): fall back to the GEO text
   view `https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSExxxxxx&targ=gsm&form=text&view=brief`
   and record `metadata_source = geo_text` instead of `series_matrix`.
@@ -585,11 +613,33 @@ NEEDS_REVIEW             1
 
 ## Output Structure
 
+**The main output is one table, `geo_cohorts.tsv`: one row per GEO dataset,
+no per-patient fields**, sorted with `SUITABLE` first. Columns:
+
+```text
+gse_accession, geo_link, title, paper_url, doi,
+n_samples, n_patients, n_patients_basis, organism, platform, data_type,
+sample_types, treatment, timepoints, sample_groups,
+response_counts, n_responders, n_nonresponders, survival_data,
+metadata_fields, verdict, verdict_reason, publication_flags
+```
+
+`treatment` and `sample_groups` give sample counts per value of each
+characteristic (e.g. `treatment: pembrolizumab=20, placebo=12`,
+`hpv: positive=12, negative=28`), skipping ID-like fields and fields with more
+than 10 distinct values. `metadata_fields` lists every characteristic recorded
+for the dataset (age, sex, HPV status, ...). Everything else below is
+supporting detail.
+
 ```text
 output/
+├── geo_cohorts.tsv        MAIN TABLE, one row per dataset
+├── report.html            self-contained HTML report: question, typed query, term
+│                          expansion with sources, GEO query string, search counts,
+│                          and the main table (sortable, filterable; paper link or N/A)
 ├── report.md
 ├── result.json
-├── tables/
+├── tables/                supporting detail
 │   ├── candidates.tsv     one row per series, search stage
 │   ├── cohorts.tsv        one row per series, scored
 │   ├── samples.tsv        one row per sample, verbatim characteristics
@@ -723,7 +773,8 @@ unsupported modalities and inaccessible data.
 
 ## Dependencies
 
-- Python >= 3.10, `pandas`, `requests`
+- Python >= 3.10, `requests` (everything else is standard library);
+  `pytest` for the tests
 - Network access to `eutils.ncbi.nlm.nih.gov`, `ftp.ncbi.nlm.nih.gov` (over
   HTTPS) and `www.ebi.ac.uk` (Europe PMC)
 - Optional contact email via `--email` or `NCBI_EMAIL`, sent to NCBI as asked
