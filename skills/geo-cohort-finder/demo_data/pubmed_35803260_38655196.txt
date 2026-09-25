@@ -1,0 +1,147 @@
+1. Cell. 2022 Aug 4;185(16):2918-2935.e29. doi: 10.1016/j.cell.2022.06.018. Epub 
+2022 Jul 7.
+
+Tissue-resident memory and circulating T cells are early responders to 
+pre-surgical cancer immunotherapy.
+
+Luoma AM(1), Suo S(2), Wang Y(3), Gunasti L(4), Porter CBM(5), Nabilsi N(3), 
+Tadros J(3), Ferretti AP(3), Liao S(3), Gurer C(3), Chen YH(6), Criscitiello 
+S(4), Ricker CA(7), Dionne D(5), Rozenblatt-Rosen O(5), Uppaluri R(8), Haddad 
+RI(7), Ashenberg O(5), Regev A(9), Van Allen EM(7), MacBeath G(3), Schoenfeld 
+JD(10), Wucherpfennig KW(11).
+
+Author information:
+(1)Department of Cancer Immunology and Virology, Dana-Farber Cancer Institute, 
+Boston, MA 02215, USA; Department of Immunology, Harvard Medical School, Boston, 
+MA 02115, USA.
+(2)Department of Cancer Immunology and Virology, Dana-Farber Cancer Institute, 
+Boston, MA 02215, USA; Department of Immunology, Harvard Medical School, Boston, 
+MA 02115, USA; Guangzhou Laboratory, Guangzhou, Guangdong 510005, China. 
+Electronic address: suo_shengbao@gzlab.ac.cn.
+(3)TScan Therapeutics, Waltham, MA 02451, USA.
+(4)Department of Radiation Oncology, Brigham and Women's Hospital, Dana-Farber 
+Cancer Institute, Boston, MA 02115, USA.
+(5)Klarman Cell Observatory, Broad Institute of Harvard and MIT, Cambridge, MA 
+02142, USA.
+(6)Department of Data Science, Dana-Farber Cancer Institute, Boston, MA 02215, 
+USA.
+(7)Department of Medical Oncology, Dana-Farber Cancer Institute, Boston, MA 
+02215, USA.
+(8)Department of Medical Oncology, Dana-Farber Cancer Institute, Boston, MA 
+02215, USA; Department of Surgery, Brigham and Women's Hospital, Boston, MA 
+02115, USA.
+(9)Klarman Cell Observatory, Broad Institute of Harvard and MIT, Cambridge, MA 
+02142, USA; Howard Hughes Medical Institute and Koch Institute of Integrative 
+Cancer Research, Department of Biology, Massachusetts Institute of Technology, 
+Cambridge, MA 02142, USA.
+(10)Department of Radiation Oncology, Brigham and Women's Hospital, Dana-Farber 
+Cancer Institute, Boston, MA 02115, USA. Electronic address: 
+jonathan_schoenfeld@dfci.harvard.edu.
+(11)Department of Cancer Immunology and Virology, Dana-Farber Cancer Institute, 
+Boston, MA 02215, USA; Department of Immunology, Harvard Medical School, Boston, 
+MA 02115, USA; Department of Neurology, Brigham & Women's Hospital and Harvard 
+Medical School, Boston, MA 02115, USA. Electronic address: 
+kai_wucherpfennig@dfci.harvard.edu.
+
+Comment in
+    Cell. 2022 Aug 4;185(16):2848-2849. doi: 10.1016/j.cell.2022.07.006.
+
+Neoadjuvant immune checkpoint blockade has shown promising clinical activity. 
+Here, we characterized early kinetics in tumor-infiltrating and circulating 
+immune cells in oral cancer patients treated with neoadjuvant anti-PD-1 or 
+anti-PD-1/CTLA-4 in a clinical trial (NCT02919683). Tumor-infiltrating CD8 
+T cells that clonally expanded during immunotherapy expressed elevated 
+tissue-resident memory and cytotoxicity programs, which were already active 
+prior to therapy, supporting the capacity for rapid response. Systematic target 
+discovery revealed that treatment-expanded tumor T cell clones in responding 
+patients recognized several self-antigens, including the cancer-specific antigen 
+MAGEA1. Treatment also induced a systemic immune response characterized by 
+expansion of activated T cells enriched for tumor-infiltrating T cell 
+clonotypes, including both pre-existing and emergent clonotypes undetectable 
+prior to therapy. The frequency of activated blood CD8 T cells, notably 
+pre-treatment PD-1-positive KLRG1-negative T cells, was strongly associated with 
+intra-tumoral pathological response. These results demonstrate how neoadjuvant 
+checkpoint blockade induces local and systemic tumor immunity.
+
+Copyright © 2022 Elsevier Inc. All rights reserved.
+
+DOI: 10.1016/j.cell.2022.06.018
+PMCID: PMC9508682
+PMID: 35803260 [Indexed for MEDLINE]
+
+Conflict of interest statement: Declaration of interests K.W.W. serves on the 
+SAB of SQZ Biotech, Nextechinvest, Bisou Bioscience Company, and T-Scan 
+Therapeutics and receives sponsored research funding from Novartis. He is a 
+scientific co-founder of Immunitas Therapeutics. J.D.S. reports research support 
+paid to the institution from Merck, BMS, Regeneron, Debiopharm; 
+Consulting/Scientific Advisory Board/Travel fees: Genentech, Immunitas, 
+Debiopharm, BMS, Nanobiotix, Tilos, Castle Biosciences, Astra Zeneca, LEK, 
+Catenion, ACI Clinical, Astellas, Stimit, and Merck KGA; Expert witness fees. 
+Stock options: Immunitas; Equity: Doximity. E.M.V.A. reports 
+Advisory/Consulting: Tango Therapeutics, Genome Medical, Invitae, Enara Bio, 
+Janssen, Manifold Bio, and Monte Rosa; Research support: Novartis, BMS; Equity: 
+Tango Therapeutics, Genome Medical, Syapse, Enara Bio, Manifold Bio, Microsoft, 
+and Monte Rosa; Travel reimbursement: Roche/Genentech; Patents: Institutional 
+patents filed on chromatin mutations and immunotherapy response, and methods for 
+clinical interpretation; intermittent legal consulting on patents for Foaley & 
+Hoag. A.R. is a founder and equity holder of Celsius Therapeutics, an equity 
+holder in Immunitas Therapeutics, and until August 31, 2020, was an SAB member 
+of Syros Pharmaceuticals, Neogene Therapeutics, Asimov, and Thermo Fisher 
+Scientific. From August 1, 2020, A.R. is an employee of Genentech and has equity 
+in Roche.
+
+
+2. iScience. 2024 Apr 5;27(5):109668. doi: 10.1016/j.isci.2024.109668.
+eCollection  2024 May 17.
+
+The diversity of inhibitory receptor co-expression patterns of exhausted CD8(+) 
+T cells in oropharyngeal carcinoma.
+
+Rao Y(1), Qiu K(1), Song Y(1), Mao M(1), Feng L(1), Cheng D(1), Li J(1), Zhang 
+Z(1), Zhang Y(1), Shao X(1), Pang W(1), Wang Y(2), Chen X(2), Jiang C(2), Wu 
+S(2), Yu S(2), Liu J(1), Wang H(1), Peng X(3), Yang L(4), Chen L(4), Mu X(5), 
+Zheng Y(1), Xu W(6), Liu G(7)(8), Chen F(1), Yu H(9), Zhao Y(1), Ren J(1).
+
+Author information:
+(1)Department of Otolaryngology-Head & Neck Surgery, West China Hospital, 
+Sichuan University, Chengdu, Sichuan, China.
+(2)Research Core Facility of West China Hospital, Sichuan University, Chengdu, 
+China.
+(3)Department of Biotherapy and National Clinical Research Center for 
+Geriatrics, Cancer Center, West China Hospital, Sichuan University, Chengdu, 
+Sichuan, China.
+(4)MinSheng Ear-Nose-Throat Hospital, Chengdu, Sichuan, China.
+(5)Langzhong People's Hospital, Nanchong, Sichuan, China.
+(6)Department of Biostatistics, Princess Margaret Cancer Centre and Dalla Lana 
+School of Public Health, Toronto, ON, Canada.
+(7)Medical Oncology and Hematology, Princess Margaret Cancer Centre, and 
+Department of Medicine, University of Toronto, Toronto, ON, Canada.
+(8)Department of Medicine, Division of Medical Oncology and Hematology, Princess 
+Margaret Cancer Center, University Health Network, University of Toronto, 
+Toronto, ON, Canada.
+(9)West China Biomedical Big Data Center, West China Hospital, Sichuan 
+University, Chengdu, China.
+
+Exhausted CD8+ T cells (Texs) are characterized by the expression of various 
+inhibitory receptors (IRs), whereas the functional attributes of these 
+co-expressed IRs remain limited. Here, we systematically characterized the 
+diversity of IR co-expression patterns in Texs from both human oropharyngeal 
+squamous cell carcinoma (OPSCC) tissues and syngeneic OPSCC model. Nearly 60% of 
+the Texs population co-expressed two or more IRs, and the number of co-expressed 
+IRs was positively associated with superior exhaustion and cytotoxicity 
+phenotypes. In OPSCC patients, programmed cell death-1 (PD-1) blockade 
+significantly enhanced PDCD1-based co-expression with other IR genes, whereas 
+dual blockades of PD-1 and cytotoxic T lymphocyte-associated protein 4 (CTLA-4) 
+significantly upregulated CTLA4-based co-expression with other IR genes. 
+Collectively, our findings demonstrate that highly diverse IR co-expression is a 
+leading feature of Texs and represents their functional states, which might 
+provide essential clues for the rational selection of immune checkpoint 
+inhibitors in treating OPSCC.
+
+© 2024 The Authors.
+
+DOI: 10.1016/j.isci.2024.109668
+PMCID: PMC11035373
+PMID: 38655196
+
+Conflict of interest statement: The authors declare no competing interests.

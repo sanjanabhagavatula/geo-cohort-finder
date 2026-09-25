@@ -1,0 +1,144 @@
+1. Data Brief. 2022 Aug 27;44:108556. doi: 10.1016/j.dib.2022.108556. eCollection
+ 2022 Oct.
+
+Datasets for gene expression profiles of head and neck squamous cell carcinoma 
+and lung cancer treated or not by PD1/PD-L1 inhibitors.
+
+Foy JP(1)(2)(3), Karabajakian A(3)(4), Ortiz-Cuaran S(3), Boussageon M(4), 
+Michon L(3), Bouaoud J(1)(3), Fekiri D(3), Robert M(3), Baffert KA(3), Hervé 
+G(1)(5), Quilhot P(1)(5), Attignon V(3), Girod A(1)(2), Chaine A(1)(2), 
+Benassarou M(1)(2), Zrounba P(6), Caux C(3), Ghiringhelli F(7), Lantuejoul S(8), 
+Crozes C(8), Brochériou I(1)(5), Pérol M(4), Fayette J(4), Bertolus C(1)(2)(3), 
+Saintigny P(3)(4)(9).
+
+Author information:
+(1)Sorbonne Université, Paris, France.
+(2)Department of Maxillo-Facial Surgery, Hôpital Pitié-Salpêtrière, Assistance 
+Publique des Hôpitaux de Paris, 47-83 boulevard de l'Hôpital, Paris 75013, 
+France.
+(3)Univ Lyon, Université Claude Bernard Lyon 1, INSERM 1052, CNRS 5286, Centre 
+Léon Bérard, Centre de recherche en cancérologie de Lyon, Lyon 69008, France.
+(4)Department of Medical Oncology, Centre Léon Bérard, 28 rue Laennec, 69373 
+Lyon cedex 08, Lyon 69008, France.
+(5)Department of Pathology, Hôpital Pitié-Salpêtrière, Assistance Publique des 
+Hôpitaux de Paris, Paris, France.
+(6)Department of Surgery, Centre Léon Bérard, Lyon 69008, France.
+(7)Department of Medical Oncology, Centre Georges-François Leclerc, Dijon 21000, 
+France.
+(8)Department of Pathology, Centre Léon Bérard, Lyon 69008, France.
+(9)Department of Translational Medicine, Centre Léon Bérard, Lyon 69008, France.
+
+Identification of tumors harboring an overall active immune phenotype may help 
+for selecting patients with advanced head and neck squamous cell carcinomas 
+(HNSCC) and non-small cell lung cancer (NSCLC) who may benefit from 
+immunotherapies. In this context, we generated targeted gene expression profiles 
+in three and two independent cohorts of patients with HNSCC or NSCLC 
+respectively, treated or not by PD-1/PD-L1 inhibitors. Notably, we generated two 
+datasets including 102 and 82 patients with HNSCC or NSCLC treated with 
+PD-1/PD-L1 inhibitors. Clinical information, including detailed survival raw 
+data, is available for each patient, allowing to test association between gene 
+expression data and patient survival (overall and progression-free survival). 
+Moreover, we also generated gene expression datasets of 27 paired HNSCC samples 
+from diagnostic biopsies and versus surgically resected specimens as well as 33 
+paired HNSCC samples at initial diagnosis (untreated) and at recurrence. Those 
+datasets may allow to test the stability of a given biomarker across paired 
+samples.
+
+© 2022 The Authors.
+
+DOI: 10.1016/j.dib.2022.108556
+PMCID: PMC9467865
+PMID: 36111282
+
+Conflict of interest statement: The authors declare the following financial 
+interests/personal relationships which may be considered as potential competing 
+interests: PS is a member of HTG Diagnostics Scientific Advisory Board and 
+receives research grants from HTG Diagnostics, Inivata, ArcherDx, Bristol-Myers 
+Squibb, Roche Molecular Diagnostics, Roche, AstraZeneca, Novartis, Bristol-Myers 
+Squibb Foundation and Illumina; JF reports grants, personal fees and 
+non-financial support from Bristol-Myers Squibb, personal fees and non-financial 
+support from MSD, personal fees from Merck, personal fees and non-financial 
+support from Astrazeneca, personal fees from Rakuten, personal fees from Biogen 
+and personal fees from Innate Pharma; SL received advisory board honoraria from 
+AbbVie, AstraZeneca, Bayer, Bristol-Myers Squibb, Merck Sharp and Dohme, Takeda, 
+Roche/Genentech; FG reports personal grants consultancy for Roche, AstraZeneca, 
+and payments for development of educational presentations for Roche, Servier, 
+Amgen, Merck. All remaining authors have declared no conflicts of interest.
+
+
+2. Eur J Cancer. 2022 Oct;174:287-298. doi: 10.1016/j.ejca.2022.06.034. Epub 2022
+ Aug 26.
+
+Immunologically active phenotype by gene expression profiling is associated with 
+clinical benefit from PD-1/PD-L1 inhibitors in real-world head and neck and lung 
+cancer patients.
+
+Foy JP(1), Karabajakian A(2), Ortiz-Cuaran S(3), Boussageon M(4), Michon L(3), 
+Bouaoud J(5), Fekiri D(3), Robert M(3), Baffert KA(3), Hervé G(6), Quilhot P(6), 
+Attignon V(3), Girod A(7), Chaine A(7), Benassarou M(7), Zrounba P(8), Caux 
+C(3), Ghiringhelli F(9), Lantuejoul S(10), Crozes C(10), Brochériou I(6), Pérol 
+M(4), Fayette J(4), Bertolus C(11), Saintigny P(12).
+
+Author information:
+(1)Sorbonne Université, Paris, France; Department of Maxillo-Facial Surgery, 
+Hôpital Pitié-Salpêtrière, Assistance Publique des Hôpitaux de Paris, Paris, 
+France; Univ Lyon, Université Claude Bernard Lyon 1, INSERM 1052, CNRS 5286, 
+Centre Léon Bérard, Centre de Recherche en Cancérologie de Lyon, Lyon, 69008, 
+France. Electronic address: jean-philippe.foy@aphp.fr.
+(2)Univ Lyon, Université Claude Bernard Lyon 1, INSERM 1052, CNRS 5286, Centre 
+Léon Bérard, Centre de Recherche en Cancérologie de Lyon, Lyon, 69008, France; 
+Department of Medical Oncology, Centre Léon Bérard, 69008, Lyon, France.
+(3)Univ Lyon, Université Claude Bernard Lyon 1, INSERM 1052, CNRS 5286, Centre 
+Léon Bérard, Centre de Recherche en Cancérologie de Lyon, Lyon, 69008, France.
+(4)Department of Medical Oncology, Centre Léon Bérard, 69008, Lyon, France.
+(5)Sorbonne Université, Paris, France; Univ Lyon, Université Claude Bernard Lyon 
+1, INSERM 1052, CNRS 5286, Centre Léon Bérard, Centre de Recherche en 
+Cancérologie de Lyon, Lyon, 69008, France.
+(6)Sorbonne Université, Paris, France; Department of Pathology, Hôpital 
+Pitié-Salpêtrière, Assistance Publique des Hôpitaux de Paris, Paris, France.
+(7)Sorbonne Université, Paris, France; Department of Maxillo-Facial Surgery, 
+Hôpital Pitié-Salpêtrière, Assistance Publique des Hôpitaux de Paris, Paris, 
+France.
+(8)Department of Surgery, Centre Léon Bérard, 69008, Lyon, France.
+(9)Department of Medical Oncology, Centre Georges-François Leclerc, Dijon 21000, 
+France.
+(10)Department of Pathology, Centre Léon Bérard, 69008, Lyon, France.
+(11)Sorbonne Université, Paris, France; Department of Maxillo-Facial Surgery, 
+Hôpital Pitié-Salpêtrière, Assistance Publique des Hôpitaux de Paris, Paris, 
+France; Univ Lyon, Université Claude Bernard Lyon 1, INSERM 1052, CNRS 5286, 
+Centre Léon Bérard, Centre de Recherche en Cancérologie de Lyon, Lyon, 69008, 
+France.
+(12)Univ Lyon, Université Claude Bernard Lyon 1, INSERM 1052, CNRS 5286, Centre 
+Léon Bérard, Centre de Recherche en Cancérologie de Lyon, Lyon, 69008, France; 
+Department of Medical Oncology, Centre Léon Bérard, 69008, Lyon, France; 
+Department of Translational Medicine, Centre Léon Bérard, 69008, Lyon, France. 
+Electronic address: pierre.saintigny@lyon.unicancer.fr.
+
+INTRODUCTION: Identification of tumours harbouring an overall active immune 
+phenotype may help for selecting patients with advanced head and neck squamous 
+cell carcinomas (HNSCC) and non-small cell lung cancer (NSCLC) who may benefit 
+from immunotherapies. Our objective was to develop a reliable and stable scoring 
+system to identify those immunologically active tumours.
+METHODS: Using gene expression profiles of 421 HNSCC, we developed a score to 
+identify immunologically active tumours. Validation of the 'HOT' score was done 
+in 40 HNSCC and 992 NSCLC. Stability of the 'HOT' score was tested in paired 
+HNSCC samples from diagnostic biopsies versus surgically resected specimens, 
+untreated versus recurrent samples, and pre-versus post-cetuximab samples in a 
+total of 76 patients. The association between the 'HOT' score with overall 
+survival (OS) and progression-free survival (PFS) was tested in 184 patients 
+with HNSCC or NSCLC treated with PD-1/PD-L1 inhibitors.
+RESULTS: A 27-gene expression based 'HOT' score was correlated with: (i) PD-L1 
+and IDO1 expression, (ii) TCD8 infiltrate and (iii) activation of the IFN-γ 
+pathway. The HOT score concordance when comparing diagnostic biopsies and 
+surgically resected specimens was higher than in untreated samples versus 
+recurrent or pre-versus post-cetuximab samples. In 102 and 82 patients with 
+HNSCC or NSCLC treated with PD-1/PD-L1 inhibitors, the HOT score was associated 
+with an improved OS and PFS in multivariate analysis.
+CONCLUSION: The 'HOT' score is a simple and robust approach to identify 
+real-world patients with HNSCC and NSCLC immunologically active tumours who may 
+benefit from PD-1/PD-L1 inhibitors.
+
+Copyright © 2022 Elsevier Ltd. All rights reserved.
+
+DOI: 10.1016/j.ejca.2022.06.034
+PMID: 36038492 [Indexed for MEDLINE]

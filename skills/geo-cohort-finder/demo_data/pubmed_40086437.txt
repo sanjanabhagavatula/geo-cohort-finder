@@ -1,0 +1,119 @@
+1. Cancer Cell. 2025 Apr 14;43(4):757-775.e8. doi: 10.1016/j.ccell.2025.02.026. 
+Epub 2025 Mar 13.
+
+Distinct CD8(+) T cell dynamics associate with response to neoadjuvant cancer 
+immunotherapies.
+
+Li H(1), Zandberg DP(2), Kulkarni A(3), Chiosea SI(4), Santos PM(3), Isett 
+BR(5), Joy M(6), Sica GL(4), Contrera KJ(7), Tatsuoka CM(8), Brand M(9), Duvvuri 
+U(10), Kim S(7), Kubik M(7), Sridharan S(7), Tu F(3), Chen J(11), Bruno TC(12), 
+Vignali DAA(12), Cillo AR(13), Bao R(14), Wang JH(15), Vujanovic L(16), Ferris 
+RL(17).
+
+Author information:
+(1)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Tumor Microenvironment 
+Center, UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Molecular Genetics and 
+Development Biology Graduate Program, University of Pittsburgh, Pittsburgh, PA, 
+USA.
+(2)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of Medicine, 
+University of Pittsburgh, Pittsburgh, PA, USA; Cancer Immunology and 
+Immunotherapy Program, UPMC Hillman Cancer Center, Pittsburgh, PA, USA.
+(3)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Tumor Microenvironment 
+Center, UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of 
+Otolaryngology, University of Pittsburgh, Pittsburgh, PA, USA.
+(4)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of Pathology, 
+University of Pittsburgh, Pittsburgh, PA, USA.
+(5)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of Medicine, 
+University of Pittsburgh, Pittsburgh, PA, USA.
+(6)UPMC Hillman Cancer Center, Pittsburgh, PA, USA.
+(7)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of 
+Otolaryngology, University of Pittsburgh, Pittsburgh, PA, USA.
+(8)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of Medicine, 
+University of Pittsburgh, Pittsburgh, PA, USA; Biostatistics Facility, UPMC 
+Hillman Cancer Center, Pittsburgh, PA, USA.
+(9)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Tumor Microenvironment 
+Center, UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of 
+Otolaryngology, University of Pittsburgh, Pittsburgh, PA, USA; Department of 
+Otorhinolaryngology, Head and Neck Surgery, Ulm University Medical Center, Ulm, 
+Germany.
+(10)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of 
+Otolaryngology, NYU Grossman School of Medicine, New York, NY, USA.
+(11)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Molecular Genetics and 
+Development Biology Graduate Program, University of Pittsburgh, Pittsburgh, PA, 
+USA.
+(12)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Tumor Microenvironment 
+Center, UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of 
+Immunology, University of Pittsburgh, Pittsburgh, PA, USA; Cancer Immunology and 
+Immunotherapy Program, UPMC Hillman Cancer Center, Pittsburgh, PA, USA.
+(13)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Tumor Microenvironment 
+Center, UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of 
+Immunology, University of Pittsburgh, Pittsburgh, PA, USA; Center for Systems 
+Immunology, University of Pittsburgh, Pittsburgh, PA, USA; Cancer Immunology and 
+Immunotherapy Program, UPMC Hillman Cancer Center, Pittsburgh, PA, USA.
+(14)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Tumor Microenvironment 
+Center, UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of Medicine, 
+University of Pittsburgh, Pittsburgh, PA, USA.
+(15)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of Medicine, 
+University of Pittsburgh, Pittsburgh, PA, USA; Department of Immunology, 
+University of Pittsburgh, Pittsburgh, PA, USA; Cancer Immunology and 
+Immunotherapy Program, UPMC Hillman Cancer Center, Pittsburgh, PA, USA.
+(16)UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Tumor Microenvironment 
+Center, UPMC Hillman Cancer Center, Pittsburgh, PA, USA; Department of 
+Otolaryngology, University of Pittsburgh, Pittsburgh, PA, USA. Electronic 
+address: lazar.vujanovic@pitt.edu.
+(17)UNC Lineberger Comprehensive Cancer Center, UNC Health Care System, Chapel 
+Hill, NC, USA. Electronic address: robert_ferris@med.unc.edu.
+
+We leverage a clinical trial (NCT04080804) that compared neoadjuvant anti-PD-1, 
+anti-PD-1+CTLA-4, and anti-PD-1+LAG-3 therapies in head and neck squamous cell 
+carcinoma patients. Combination therapies promote higher pathologic response 
+rates versus monotherapy, and major pathologic response is associated with 
+better survival. To address whether successful immune checkpoint inhibitor (ICI) 
+regimens act through similar or distinct pathways, we robustly and 
+longitudinally characterize transcriptional and proteomic dynamics of CD8+ 
+tumor-infiltrating lymphocytes (TILs) in a clonal manner. Anti-PD-1+LAG-3 
+reprograms CD8+ TIL with type-I interferon response and exhaustion gene programs 
+into effector memory and resident memory (TEM/TRM). In contrast, 
+anti-PD-1+CTLA-4 activates and expands pre-existing TEM/TRM CD8+ TIL, but does 
+not rejuvenate exhausted phenotypes into T effector cells. Anti-PD-1+LAG-3, but 
+not anti-PD-1+CTLA-4, induces widespread TCR sharing among the different 
+transcriptional states, as well as increased TCR diversity in responding 
+patients. Our data suggest doublet regimen-specific transcriptional and clonal 
+dynamics of tumor-reactive CD8+ T cells.
+
+Copyright © 2025 The Authors. Published by Elsevier Inc. All rights reserved.
+
+DOI: 10.1016/j.ccell.2025.02.026
+PMCID: PMC12359303
+PMID: 40086437 [Indexed for MEDLINE]
+
+Conflict of interest statement: Declaration of interests D.P.Z. declares 
+competing interests with BICARA (steering committee), Seagen (steering 
+committee), Inhibrx(consulting), MacroGenics (consulting), Prelude Therapeutics 
+(advisory board), and Merck (advisory board) and research support 
+(institutional) from Merck, BMS, AstraZeneca, GlaxoSmithKline, Aduro, 
+MacroGenics, Bicara, and Novasenta. R.L.F. is cofounder and stockholder of 
+Novasenta, and declares competing interests with Aduro Biotech, Inc. 
+(consulting), AstraZeneca/MedImmune (clinical trial, research funding), 
+Bristol-Myers Squibb (advisory board, clinical trial, research funding), EMD 
+Serono (advisory board), MacroGenics Inc. (advisory board), Merck (advisory 
+board, clinical trial), Novasenta (consulting, stock, research funding), Numab 
+Therapeutics AG (advisory board), Pfizer (advisory board), Sanofi (consultant), 
+Tesaro (research funding) and Zymeworks Inc. (consultant). T.C.B. serves on the 
+scientific advisory board of Walking Fish Therapeutics, BeSpoke Therapeutics, 
+Mestag Therapeutics, KaliVir Therapeutics, and Galvanize Therapeutics. T.C.B. is 
+a consultant for Attivare Therapeutics and Tabby Therapeutics. L.V. is a 
+co-inventor of a methodology licensed to INmune Bio, Inc. where DN-TNF can be 
+used to prevent or treat malignancies. R.B. declares PCT/US15/612657 (Cancer 
+Immunotherapy), PCT/US18/36052 (Microbiome Biomarkers for Anti-PD-1/PD-L1 
+Responsiveness: Diagnostic, Prognostic and Therapeutic Uses Thereof), 
+PCT/US63/055227 (Methods and Compositions for Treating Autoimmune and Allergic 
+Disorders); D.A.A.V. has patents covering LAG3, with others pending, and is 
+entitled to a share in net income generated from licensing of these patent 
+rights for commercial development. D.A.A.V: cofounder and stock holder – 
+Novasenta, Potenza, Tizona, Trishula; stock holder – Oncorus, Werewolf; patents 
+licensed and royalties - BMS, Novasenta; scientific advisory board member - 
+Tizona, Werewolf, F-Star, Bicara, Apeximmune, T7/Imreg Bio; consultant - BMS, 
+Incyte, Regeneron, Ono Pharma, Peptone, Avidity Partners; funding - BMS, 
+Novasenta. A.R.C. is a consultant for AboundBio. The other authors declare no 
+competing interests.

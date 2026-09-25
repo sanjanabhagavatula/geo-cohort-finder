@@ -7,6 +7,7 @@ never in model weights. Identical input produces identical output.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -192,7 +193,7 @@ class Fetcher:
             return r.read().decode("utf-8", "replace")
 
     def esearch(self, term, retmax=400):
-        key = "esearch_" + str(abs(hash(term)) % (10 ** 12)) + ".json"
+        key = "esearch_" + hashlib.md5(term.encode()).hexdigest()[:12] + ".json"
         params = {"db": "gds", "term": term, "retmax": retmax, "retmode": "json"}
         if self.api_key:
             params["api_key"] = self.api_key
@@ -200,12 +201,31 @@ class Fetcher:
         return json.loads(self._cached(key, lambda: self._get(url)))
 
     def esummary(self, uids):
-        key = "esummary_" + str(abs(hash(",".join(uids))) % (10 ** 12)) + ".json"
+        key = "esummary_" + hashlib.md5(",".join(uids).encode()).hexdigest()[:12] + ".json"
         params = {"db": "gds", "id": ",".join(uids), "retmode": "json"}
         if self.api_key:
             params["api_key"] = self.api_key
         url = f"{EUTILS}/esummary.fcgi?" + urllib.parse.urlencode(params)
         return json.loads(self._cached(key, lambda: self._get(url)))
+
+    def pubmed(self, pmids):
+        """Abstracts only. Full text is frequently paywalled; abstracts are not."""
+        key = "pubmed_" + "_".join(pmids) + ".txt"
+        params = {"db": "pubmed", "id": ",".join(pmids),
+                  "rettype": "abstract", "retmode": "text"}
+        if self.api_key:
+            params["api_key"] = self.api_key
+        url = f"{EUTILS}/efetch.fcgi?" + urllib.parse.urlencode(params)
+        return self._cached(key, lambda: self._get(url))
+
+    def pmids_for(self, gse):
+        """Resolve a GSE accession to its linked PubMed IDs via esummary."""
+        res = self.esearch(f"{gse}[Accession] AND GSE[Entry Type]", retmax=1)
+        uids = res["esearchresult"]["idlist"]
+        if not uids:
+            return []
+        d = self.esummary(uids)["result"]
+        return [str(x) for x in d[uids[0]].get("pubmedids", [])]
 
     def samples(self, gse):
         """Sample-level SOFT records. This is the only place response labels live."""
@@ -355,9 +375,53 @@ def characterize(gse, soft_text, query):
                                    "class_only" if class_hits else "none"),
         "therapy_evidence_n": drug_hits or class_hits,
         "timepoint_field": tp_field,
+        "pmids": [],
+        "pub_drug_evidence": "none",
+        "pub_quote": "",
+        "pub_n_patients_mentions": "",
     }
     cohort["verdict"], cohort["verdict_reason"] = score(cohort, query)
     return cohort, rows
+
+
+PUB_N_PATIENTS_PAT = re.compile(
+    r"(\d{2,4})\s+patients?\b", re.I)
+
+
+def scan_publication(text, query):
+    """Scan abstract text for drug evidence and a reported patient count.
+
+    Publication evidence is a separate, weaker tier than sample-level
+    metadata: it describes the study, not any individual deposited sample.
+    It is never merged into the sample-level counts.
+    """
+    out = {"pub_drug_evidence": "none", "pub_quote": "",
+           "pub_n_patients_mentions": ""}
+    if not text:
+        return out
+    flat = " ".join(text.split())
+    for term in query.get("drug_synonyms", []):
+        m = re.search(r"[^.]*\b" + re.escape(term) + r"\b[^.]*\.", flat, re.I)
+        if m:
+            out["pub_drug_evidence"] = "drug_named"
+            out["pub_quote"] = m.group(0).strip()[:300]
+            break
+    if out["pub_drug_evidence"] == "none":
+        for term in query.get("drug_class_terms", []) + ["PD-1/PD-L1", "PD-L1"]:
+            m = re.search(r"[^.]*" + re.escape(term) + r"[^.]*\.", flat, re.I)
+            if m:
+                out["pub_drug_evidence"] = "class_only"
+                out["pub_quote"] = m.group(0).strip()[:300]
+                break
+    # Report every "N patients" mention rather than picking one. An abstract
+    # routinely covers several cohorts (e.g. "102 and 82 patients with HNSCC
+    # or NSCLC"), so any single extracted number is as likely to belong to a
+    # different cohort as to this series. These are unverified mentions, not
+    # a patient count, and are never used in scoring.
+    counts = [x for x in PUB_N_PATIENTS_PAT.findall(flat)]
+    if counts:
+        out["pub_n_patients_mentions"] = ",".join(dict.fromkeys(counts))
+    return out
 
 
 def score(c, query):
@@ -374,6 +438,11 @@ def score(c, query):
     drug_asked = query.get("drug") is not None
 
     if drug_asked and c["therapy_evidence_level"] == "none":
+        if c.get("pub_drug_evidence", "none") != "none":
+            return ("THERAPY_PUBLICATION_ONLY",
+                    f"treatment described in the linked publication "
+                    f"({c['pub_drug_evidence']}) but absent from sample-level "
+                    f"metadata; samples cannot be assigned to arms")
         return ("THERAPY_UNCONFIRMED",
                 "neither the drug nor its class appears in sample-level "
                 "metadata; series text alone is not confirmation")
@@ -493,6 +562,8 @@ def main():
     p.add_argument("--max-fetch", type=int, default=DEFAULTS["MAX_SERIES_DEEP_FETCH"])
     p.add_argument("--accessions", help="comma-separated GSEs; skips the search stage")
     p.add_argument("--output", default="output")
+    p.add_argument("--with-publications", action="store_true",
+                   help="fetch linked PubMed abstracts for supporting evidence")
     p.add_argument("--demo", action="store_true", help="cached records, no network")
     args = p.parse_args()
 
@@ -502,6 +573,7 @@ def main():
         args.disease = args.disease or "HNSCC"
         args.omics = args.omics or "rna-seq"
         args.accessions = args.accessions or "GSE159067,GSE200996,GSE288199"
+        args.with_publications = True
         cache = here / "demo_data"
     else:
         cache = Path(args.output) / ".cache"
@@ -552,6 +624,15 @@ def main():
         except Exception as e:                      # noqa: BLE001
             print(f"  [{i}/{len(accs)}] {gse}: FETCH FAILED ({e})")
             continue
+        if args.with_publications:
+            try:
+                pmids = fetcher.pmids_for(gse)
+                if pmids:
+                    c["pmids"] = pmids
+                    c.update(scan_publication(fetcher.pubmed(pmids), q))
+            except Exception as e:                  # noqa: BLE001
+                c["pub_quote"] = f"lookup failed: {e}"
+            c["verdict"], c["verdict_reason"] = score(c, q)
         cohorts.append(c)
         sample_rows.extend(rows)
         print(f"  [{i}/{len(accs)}] {gse:<12} n={c['n_samples']:<5} "
@@ -569,7 +650,8 @@ def main():
         "response_counts_raw", "response_needs_review",
         "n_responder_strict", "n_nonresponder_strict",
         "n_responder_dcb", "n_nonresponder_dcb",
-        "has_survival", "timepoint_field", "verdict", "verdict_reason"])
+        "has_survival", "timepoint_field", "pmids", "pub_drug_evidence",
+        "pub_n_patients_mentions", "pub_quote", "verdict", "verdict_reason"])
     write_tsv(out / "tables" / "samples.tsv", sample_rows, [
         "gse_accession", "gsm_accession", "patient_id", "source_name",
         "raw_characteristics", "response_raw", "response_mapped",
