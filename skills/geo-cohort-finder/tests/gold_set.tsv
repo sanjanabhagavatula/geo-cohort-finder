@@ -1,0 +1,7 @@
+gse_accession	expected_verdict	why	curated_by	source
+GSE159067	SUITABLE_CLASS_ONLY	102 patient samples, full RECIST in 'best response on immunotherapy (recist)'; class only - pembrolizumab never named	TODO	PMID pending
+GSE200996	THERAPY_UNCONFIRMED	patient cohort, pre/post-Tx states, but no drug or class term in sample metadata	TODO	PMID pending
+GSE288199	THERAPY_UNCONFIRMED	single-cell VDJ/GEX/ADT, no response or treatment fields deposited	TODO	PMID pending
+TODO-cellline	WRONG_SAMPLE_TYPE	cell-line-only series; add a real accession	TODO	
+TODO-smalln	INSUFFICIENT_N	response labels present but <20 patients; add a real accession	TODO	
+TODO-survival	SURVIVAL_ONLY	OS/PFS recorded, no response call; add a real accession	TODO	

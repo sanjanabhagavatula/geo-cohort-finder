@@ -277,10 +277,31 @@ Applied to sample-level metadata first, falling back to series text.
 | `siRNA`, `shRNA`, `knockout`, `overexpress`, `treated ... for Nh` | `perturbation` |
 | no match | `NEEDS_REVIEW` |
 
+#### Drug-class fallback
+
+Sample metadata frequently records only the therapeutic class and never the
+agent. `GSE159067`, a 102-sample HNSCC cohort with full RECIST labels, records
+`immunotherapy line` and `best response on immunotherapy (recist)` but never
+names pembrolizumab.
+
+Class evidence therefore earns `SUITABLE_CLASS_ONLY`, a distinct and weaker
+verdict than a named drug. **It is never silently upgraded.** A class match
+means the cohort received some agent of that class; which one is unestablished.
+
+```text
+pembrolizumab → immunotherapy, immune checkpoint, checkpoint inhibitor, anti-PD-1, ICI
+cisplatin     → chemotherapy, platinum, chemoradiation
+cetuximab     → anti-EGFR, EGFR inhibitor, targeted therapy
+```
+
 #### Response label mapping
 
 Matched case-insensitively against sample characteristics. The verbatim source
 string and its field name are retained for every mapped label.
+
+Field names are matched loosely (`resp|recist|benefit|outcome|sensitiv|resistan`)
+because real GEO fields look like `best response on immunotherapy (recist)`,
+not `response`.
 
 | Source string | Mapped |
 |---|---|
@@ -319,13 +340,14 @@ primary labels and the derived groups are marked as derived.
 
 | Verdict | Criteria |
 |---|---|
-| `SUITABLE` | therapy confirmed in sample metadata AND response labels present AND `n_patients >= MIN_PATIENTS_TOTAL` AND both arms `>= MIN_PATIENTS_PER_ARM` AND `sample_type == patient_tumor` |
+| `SUITABLE` | drug named in sample metadata AND response labels present AND `n_patients >= MIN_PATIENTS_TOTAL` AND both arms `>= MIN_PATIENTS_PER_ARM` AND `sample_type == patient_tumor` |
+| `SUITABLE_CLASS_ONLY` | as above, but only the drug **class** appears (e.g. "immunotherapy"), not the agent |
 | `SUITABLE_NO_DRUG_FILTER` | as above, drug not requested |
 | `INSUFFICIENT_N` | all criteria met except patient counts |
 | `NO_RESPONSE_LABELS` | patient cohort, therapy confirmed, no outcome annotation |
 | `SURVIVAL_ONLY` | survival recorded, no response call |
 | `WRONG_SAMPLE_TYPE` | `cell_line`, `model` or `perturbation` only |
-| `THERAPY_UNCONFIRMED` | drug in series text only, absent from sample metadata |
+| `THERAPY_UNCONFIRMED` | neither drug nor class in sample metadata; series text alone is not confirmation |
 | `NEEDS_REVIEW` | metadata present but unparsed |
 
 **Metadata that cannot be established is recorded as `unknown` or `null`.
