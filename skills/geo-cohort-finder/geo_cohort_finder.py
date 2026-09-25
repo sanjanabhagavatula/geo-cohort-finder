@@ -982,7 +982,8 @@ def write_html_report(out: Path, record: dict, search: dict, cohorts: list[dict]
                                                if x[0] in VERDICT_RANK else 99))
 
     head = ["GEO", "Title", "Paper", "Samples", "Patients", "Organism", "Data type", "Sample types",
-            "Treatment", "Timepoints", "Sample groups", "Response", "Survival", "Verdict", "Reason"]
+            "Treatment", "Therapy evidence", "Timepoints", "Sample groups", "Response",
+            "Survival", "Verdict", "Reason"]
     body_rows = []
     for c in _sorted_cohorts(cohorts):
         acc = e(c["gse_accession"])
@@ -991,7 +992,16 @@ def write_html_report(out: Path, record: dict, search: dict, cohorts: list[dict]
                     if c.get("n_patients_basis") == "assumed_one_per_sample" else "")
         resp = c.get("response_counts_raw") or ""
         if c.get("n_responder_strict") not in ("", None):
-            resp = f"{resp} (R {c['n_responder_strict']} / NR {c['n_nonresponder_strict']})".strip()
+            resp = (f"{resp}<br><span class=\"note\">strict R {c['n_responder_strict']} / "
+                    f"NR {c['n_nonresponder_strict']} · durable-benefit "
+                    f"{c.get('n_responder_dcb')} / {c.get('n_nonresponder_dcb')}</span>")
+        lvl = c.get("drug_evidence_level") or ""
+        lvl_html = {
+            "drug_named": '<span class="badge b-ok">drug named</span>',
+            "class_only": '<span class="badge b-warn" title="Sample metadata names only the '
+                          'therapeutic class, never the agent.">class only</span>',
+            "none": '<span class="badge b-bad">not in metadata</span>',
+        }.get(lvl, '<span class="na">&mdash;</span>')
         body_rows.append(
             "<tr>"
             f'<td class="mono"><a href="{e(c.get("ftp_link", ""))}" target="_blank" rel="noopener">{acc}</a></td>'
@@ -1004,9 +1014,10 @@ def write_html_report(out: Path, record: dict, search: dict, cohorts: list[dict]
             + _cell(c.get("omics_type"))
             + _cell(c.get("sample_type"))
             + _cell(c.get("treatment"), "wide")
+            + f"<td>{lvl_html}</td>"
             + _cell(c.get("biopsy_timing") if c.get("biopsy_timing") != "unknown" else "")
             + _cell(c.get("sample_groups"), "wide")
-            + _cell(resp)
+            + (f"<td>{resp}</td>" if resp else _cell(""))
             + _cell("yes" if c.get("has_survival") is True else ("no" if c.get("has_survival") is False else ""))
             + f'<td data-v="{VERDICT_RANK.index(c["verdict"]) if c["verdict"] in VERDICT_RANK else 99}">'
               f'{_badge(c["verdict"])}</td>'
