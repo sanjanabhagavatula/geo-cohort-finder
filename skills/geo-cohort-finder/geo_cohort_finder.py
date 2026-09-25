@@ -100,11 +100,17 @@ RESPONSE_VALUE_RULES = [
     ("PR", r"^\s*(PR|partial response|partial remission)\s*$"),
     ("SD", r"^\s*(SD|stable disease|stable)\s*$"),
     ("PD", r"^\s*(PD|progressive disease|progression|progressive)\s*$"),
+    # Merged categories used by real studies (Riaz et al. deposit "PRCR").
+    ("PR_OR_CR", r"^\s*(PRCR|PR/CR|CR/PR|CRPR|PR or CR)\s*$"),
+    ("SD_OR_PD", r"^\s*(SDPD|SD/PD|PD/SD)\s*$"),
     ("RESPONDER_UNSPECIFIED", r"^\s*(R|responder|response|yes|benefit|DCB)\s*$"),
     ("NONRESPONDER_UNSPECIFIED",
      r"^\s*(NR|non-?responder|no response|no|NDB)\s*$"),
     ("SENSITIVE", r"^\s*sensitive\s*$"),
     ("RESISTANT", r"^\s*resistant\s*$"),
+    # Explicitly recorded as unknown by the submitter. Distinct from
+    # NEEDS_REVIEW, which means this skill could not parse the string.
+    ("UNKNOWN_RECORDED", r"^\s*(UNK|unknown|NA|N/?A|not evaluable|NE|not assessed)\s*$"),
 ]
 
 TIMEPOINT_VALUE_RULES = [
@@ -339,6 +345,7 @@ def characterize(gse, soft_text, query):
         if r["response_mapped"] and r["response_mapped"] != "NEEDS_REVIEW":
             counts[r["response_mapped"]] = counts.get(r["response_mapped"], 0) + 1
     needs_review = sum(1 for r in rows if r["response_mapped"] == "NEEDS_REVIEW")
+    recorded_unknown = counts.pop("UNKNOWN_RECORDED", 0)
 
     types = {}
     for r in rows:
@@ -348,11 +355,16 @@ def characterize(gse, soft_text, query):
     n_samples = len(rows)
     n_patients = len(patients) if patients else None
 
-    strict_r = counts.get("CR", 0) + counts.get("PR", 0) + \
-        counts.get("RESPONDER_UNSPECIFIED", 0) + counts.get("SENSITIVE", 0)
-    strict_nr = counts.get("SD", 0) + counts.get("PD", 0) + \
-        counts.get("NONRESPONDER_UNSPECIFIED", 0) + counts.get("RESISTANT", 0)
-    dcb_r = counts.get("CR", 0) + counts.get("PR", 0) + counts.get("SD", 0)
+    strict_r = (counts.get("CR", 0) + counts.get("PR", 0)
+                + counts.get("PR_OR_CR", 0)
+                + counts.get("RESPONDER_UNSPECIFIED", 0)
+                + counts.get("SENSITIVE", 0))
+    strict_nr = (counts.get("SD", 0) + counts.get("PD", 0)
+                 + counts.get("SD_OR_PD", 0)
+                 + counts.get("NONRESPONDER_UNSPECIFIED", 0)
+                 + counts.get("RESISTANT", 0))
+    dcb_r = (counts.get("CR", 0) + counts.get("PR", 0)
+             + counts.get("PR_OR_CR", 0) + counts.get("SD", 0))
     dcb_nr = counts.get("PD", 0)
 
     cohort = {
@@ -365,9 +377,10 @@ def characterize(gse, soft_text, query):
         "response_field": resp_field,
         "response_counts_raw": counts,
         "response_needs_review": needs_review,
+        "response_recorded_unknown": recorded_unknown,
         "n_responder_strict": strict_r,
         "n_nonresponder_strict": strict_nr,
-        "n_responder_dcb": dcb_r if counts.get("SD") is not None else None,
+        "n_responder_dcb": dcb_r,
         "n_nonresponder_dcb": dcb_nr,
         "has_survival": has_survival,
         "therapy_confirmed": drug_hits > 0 if drug_terms else None,
@@ -435,6 +448,13 @@ def score(c, query):
         return "NEEDS_REVIEW", "sample type could not be classified from metadata"
 
     has_resp = bool(c["response_counts_raw"])
+    n_labeled = sum(c["response_counts_raw"].values())
+    n_unparsed = c.get("response_needs_review", 0)
+    if has_resp and n_unparsed > 0.1 * max(n_labeled, 1):
+        return ("NEEDS_REVIEW",
+                f"{n_unparsed} of {n_labeled + n_unparsed} response strings "
+                f"are unparsed; arm counts would be incomplete. Extend the "
+                f"response mapping table before using this cohort.")
     drug_asked = query.get("drug") is not None
 
     if drug_asked and c["therapy_evidence_level"] == "none":
@@ -647,7 +667,7 @@ def main():
         "accession", "n_samples", "n_patients", "sample_type", "mixed_cohort",
         "therapy_confirmed", "therapy_evidence_level", "therapy_evidence_n",
         "response_field",
-        "response_counts_raw", "response_needs_review",
+        "response_counts_raw", "response_needs_review", "response_recorded_unknown",
         "n_responder_strict", "n_nonresponder_strict",
         "n_responder_dcb", "n_nonresponder_dcb",
         "has_survival", "timepoint_field", "pmids", "pub_drug_evidence",
