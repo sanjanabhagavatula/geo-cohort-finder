@@ -1,0 +1,36 @@
+{
+  "name": "geo-cohort-finder",
+  "cli_alias": "geocohort",
+  "description": "Find analyzable human patient cohorts in NCBI GEO from a natural-language research question. Records the question verbatim, expands drug and disease synonyms, searches GEO, parses sample-level metadata from series matrix files, cross-checks the linked publication, and returns a dataframe of candidate studies with patient counts, sample type, treatment exposure and treatment-response labels.",
+  "version": "0.1.0",
+  "status": "active",
+  "maturity_tier": "tested",
+  "maturity_evidence": {
+    "has_skill_md": true,
+    "has_script": true,
+    "has_tests": true,
+    "has_demo": true,
+    "cli_registered": false,
+    "ci_tested": false,
+    "benchmark_validated": false
+  },
+  "has_script": true,
+  "has_tests": true,
+  "has_demo": true,
+  "demo_command": "python clawbio.py run geo-cohort-finder --demo",
+  "dependencies": ["requests"],
+  "tags": ["GEO", "dataset discovery", "cohort", "treatment response", "metadata", "oncology"],
+  "trigger_keywords": [
+    "find GEO datasets", "public datasets for", "responder vs non-responder",
+    "treatment response dataset", "GEO cohort", "GSE search",
+    "patient cohorts for", "is there public data on"
+  ],
+  "chaining_partners": [
+    "article-data-fetcher", "nfcore-rnaseq-wrapper", "rnaseq-de",
+    "de-summary", "pathway-enricher", "scrna-orchestrator",
+    "methylation-clock", "clinical-trial-finder"
+  ],
+  "license": "MIT",
+  "model_license": "n/a",
+  "data_license": "NCBI GEO public domain"
+}

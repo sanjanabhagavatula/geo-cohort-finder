@@ -367,6 +367,31 @@ classification.
 Named cell lines (`CAL27`, `FaDu`, `SCC-25`, ...) live in `rules/cell_lines.tsv`,
 not in this document, so other cancer types can be added without editing code.
 
+#### Drug-class fallback
+
+Sample metadata frequently records only the therapeutic class and never the
+agent. `GSE159067`, a 102-patient HNSCC cohort with full RECIST labels,
+records `immunotherapy line` and `best response on immunotherapy (recist)`
+but never names pembrolizumab -- and neither does its publication, which says
+"PD-1/PD-L1 inhibitors".
+
+A class match therefore earns `SUITABLE_CLASS_ONLY`, a distinct and weaker
+verdict than a named drug, and is **never silently upgraded**. The cohort
+received some agent of that class; which one is unestablished.
+
+Class terms live in `rules/drug_classes.tsv`.
+
+#### Merged response categories
+
+Real studies deposit combined categories. Riaz et al. (`GSE91061`) use
+`PRCR` for partial-or-complete response, covering 23 of 109 samples. Without
+a mapping these fall to `NEEDS_REVIEW` and the strict responder arm prints as
+`0`, which reads as "no responders" rather than "the parser failed".
+
+`PR_OR_CR` and `SD_OR_PD` are mapped in `rules/response_labels.tsv`.
+`SD_OR_PD` hides an unknown amount of stable disease, so it leaves the
+durable-benefit split undefined in the same way a plain `SD` count does.
+
 #### Response label mapping
 
 Response labels are matched **only within response fields**, and **only as a
@@ -452,7 +477,8 @@ listed in `verdict_reason`.
 | 4 | `NO_RESPONSE_LABELS` | no response field and no survival field | `response` |
 | 5 | `NEEDS_REVIEW` | any sample type is `NEEDS_REVIEW`; or (`response`) any response value is `NEEDS_REVIEW`; or `n_patients` is `unknown` | both |
 | 6 | `INSUFFICIENT_N` | `n_patients < MIN_PATIENTS_TOTAL`; or (`response`) an arm `< MIN_PATIENTS_PER_ARM` | both |
-| 7 | `SUITABLE` | none of the above | both |
+| 7 | `SUITABLE_CLASS_ONLY` | as `SUITABLE`, but only the drug **class** appears in sample metadata, not the agent |
+| `SUITABLE` | none of the above | both |
 
 So for a `discovery` query, `SUITABLE` means: patient tumor samples, drug
 confirmed if one was requested, the requested modality, and at least

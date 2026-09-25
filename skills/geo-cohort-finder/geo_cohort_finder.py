@@ -88,6 +88,10 @@ class Rules:
                                 for r in _read_tsv(rules_dir / "response_labels.tsv")}
         self.omics = {_norm(r["omics"]): [t.strip() for t in r["gds_types"].split(";")]
                       for r in _read_tsv(rules_dir / "omics.tsv")}
+        # Sample metadata often records only the therapeutic class and never
+        # the agent, so a class match is tracked as its own weaker tier.
+        self.drug_classes = {_norm(r["drug"]): [c.strip() for c in r["class_terms"].split(";") if c.strip()]
+                             for r in _read_tsv(rules_dir / "drug_classes.tsv")}
         self.cell_line_re = _term_regex(self.cell_lines)
 
     def expand(self, kind: str, term: str) -> list[dict]:
@@ -266,6 +270,7 @@ def build_query(args: argparse.Namespace, rules: Rules) -> dict:
             terms["disease"].append({"term": t, "source": "agent"})
     if args.drug:
         terms["drug"] = rules.expand("drug", args.drug)
+        query["drug_class_terms"] = rules.drug_classes.get(_norm(args.drug), [])
         for t in _split_terms(args.extra_drug_terms):
             terms["drug"].append({"term": t, "source": "agent"})
 
@@ -502,7 +507,8 @@ def patient_id(sample: dict) -> Optional[str]:
 
 
 def annotate_sample(sample: dict, rules: Rules, drug_re: Optional[re.Pattern],
-                    organism: str = DEFAULTS["organism"]) -> dict:
+                    organism: str = DEFAULTS["organism"],
+                    drug_class_re: Optional[re.Pattern] = None) -> dict:
     chars = sample["characteristics"]
     org = sample.get("organism", "")
     resp_fields = [(k, v) for k, v in chars.items() if is_response_field(k, rules)]
@@ -512,6 +518,12 @@ def annotate_sample(sample: dict, rules: Rules, drug_re: Optional[re.Pattern],
         for k, v in list(chars.items()) + [("source_name", sample.get("source_name", ""))]:
             if drug_re.search(f"{k}: {v}"):
                 drug_field, drug_string = k, v
+                break
+    class_field, class_string = "", ""
+    if drug_class_re:
+        for k, v in list(chars.items()) + [("source_name", sample.get("source_name", ""))]:
+            if drug_class_re.search(f"{k}: {v}"):
+                class_field, class_string = k, v
                 break
     timepoints = [v for k, v in chars.items() if TIMEPOINT_KEY.search(k)]
     return {
@@ -525,6 +537,8 @@ def annotate_sample(sample: dict, rules: Rules, drug_re: Optional[re.Pattern],
         "response_mapped": map_response(resp_raw, rules) if resp_fields else "",
         "drug_field": drug_field,
         "drug_string": drug_string,
+        "drug_class_field": class_field,
+        "drug_class_string": class_string,
         "has_survival": any(SURVIVAL_KEY.search(k) for k in chars),
         "timepoint": "; ".join(timepoints),
     }
@@ -556,8 +570,8 @@ def _metadata_fields(samples: list[dict]) -> str:
 
 
 RECIST = {"CR", "PR", "SD", "PD"}
-STRICT_R = {"CR", "PR", "RESPONDER_UNSPECIFIED", "SENSITIVE"}
-STRICT_NR = {"SD", "PD", "NONRESPONDER_UNSPECIFIED", "RESISTANT"}
+STRICT_R = {"CR", "PR", "PR_OR_CR", "RESPONDER_UNSPECIFIED", "SENSITIVE"}
+STRICT_NR = {"SD", "PD", "SD_OR_PD", "NONRESPONDER_UNSPECIFIED", "RESISTANT"}
 EXCLUDED_TYPES = {"cell_line", "model", "perturbation"}
 
 
@@ -599,8 +613,9 @@ def summarize_series(acc: str, meta: dict, samples: list[dict], query: dict) -> 
     n_nr = sum(labels[k] for k in STRICT_NR)
     # dcb puts durable SD with responders; duration is not parsed, so dcb is
     # only defined when no SD is present (then it equals strict).
-    dcb_known = labels["SD"] == 0
+    dcb_known = labels["SD"] == 0 and labels["SD_OR_PD"] == 0
     drug_hits = [s for s in samples if s["drug_field"]]
+    class_hits = [s for s in samples if s.get("drug_class_field")]
 
     row = {
         "gse_accession": acc,
@@ -616,6 +631,9 @@ def summarize_series(acc: str, meta: dict, samples: list[dict], query: dict) -> 
         "drug_matched": bool(drug_hits) if query["drug"] else "",
         "drug_evidence_field": drug_hits[0]["drug_field"] if drug_hits else "",
         "drug_evidence_string": drug_hits[0]["drug_string"] if drug_hits else "",
+        "drug_evidence_level": ("drug_named" if drug_hits else
+                                "class_only" if class_hits else "none") if query["drug"] else "",
+        "drug_class_evidence_string": class_hits[0]["drug_class_string"] if class_hits else "",
         "sample_type": ";".join(f"{k}:{v}" for k, v in types.most_common()),
         "heterogeneous_sample_types": len(types) > 1,
         "biopsy_timing": ";".join(sorted({s["timepoint"] for s in samples if s["timepoint"]})) or "unknown",
@@ -640,8 +658,9 @@ def summarize_series(acc: str, meta: dict, samples: list[dict], query: dict) -> 
         failures.append(("WRONG_SAMPLE_TYPE", "all samples are cell_line/model/perturbation"))
     if len(right_org) < len(samples) and right_org:
         failures.append(("NEEDS_REVIEW", f"{len(samples) - len(right_org)} samples from another organism excluded"))
-    if query["drug"] and not drug_hits:
-        failures.append(("THERAPY_UNCONFIRMED", "drug not named in any sample-level field"))
+    if query["drug"] and not drug_hits and not class_hits:
+        failures.append(("THERAPY_UNCONFIRMED",
+                         "neither the drug nor its class named in any sample-level field"))
     if objective == "response" and not has_response:
         if row["has_survival"]:
             failures.append(("SURVIVAL_ONLY", "survival field present, no response field"))
@@ -670,11 +689,13 @@ def summarize_series(acc: str, meta: dict, samples: list[dict], query: dict) -> 
         row["verdict"] = min((f[0] for f in failures), key=order.index)
         row["verdict_reason"] = "; ".join(f[1] for f in failures)
     else:
-        row["verdict"] = "SUITABLE"
+        class_only = bool(query["drug"]) and not drug_hits and bool(class_hits)
+        row["verdict"] = "SUITABLE_CLASS_ONLY" if class_only else "SUITABLE"
         bits = [f"{n_patients} patients" +
                 (" (assumed one sample per patient)" if basis == "assumed_one_per_sample" else "")]
         if query["drug"]:
-            bits.insert(0, "therapy confirmed")
+            bits.insert(0, "therapy class confirmed, agent unestablished"
+                        if class_only else "therapy confirmed")
         if has_response:
             bits.append(f"{n_r}/{n_nr} strict")
         row["verdict_reason"] = "; ".join(bits)
@@ -796,12 +817,14 @@ MAIN_COLS = [
     ("n_samples", "n_samples"), ("n_patients", "n_patients"), ("n_patients_basis", "n_patients_basis"),
     ("organism", "organism"), ("platform", "platform"), ("data_type", "omics_type"),
     ("sample_types", "sample_type"), ("treatment", "treatment"), ("timepoints", "biopsy_timing"),
-    ("sample_groups", "sample_groups"), ("response_counts", "response_counts_raw"),
-    ("n_responders", "n_responder_strict"), ("n_nonresponders", "n_nonresponder_strict"),
+    ("sample_groups", "sample_groups"), ("therapy_evidence", "drug_evidence_level"),
+    ("response_counts", "response_counts_raw"),
+    ("n_responders_strict", "n_responder_strict"), ("n_nonresponders_strict", "n_nonresponder_strict"),
+    ("n_responders_dcb", "n_responder_dcb"), ("n_nonresponders_dcb", "n_nonresponder_dcb"),
     ("survival_data", "has_survival"), ("metadata_fields", "metadata_fields"),
     ("verdict", "verdict"), ("verdict_reason", "verdict_reason"), ("publication_flags", "pub_flags"),
 ]
-VERDICT_RANK = ["SUITABLE", "INSUFFICIENT_N", "NEEDS_REVIEW", "SURVIVAL_ONLY", "NO_RESPONSE_LABELS",
+VERDICT_RANK = ["SUITABLE", "SUITABLE_CLASS_ONLY", "INSUFFICIENT_N", "NEEDS_REVIEW", "SURVIVAL_ONLY", "NO_RESPONSE_LABELS",
                 "THERAPY_UNCONFIRMED", "WRONG_SAMPLE_TYPE", "WRONG_ORGANISM", "SUPERSERIES"]
 
 
@@ -822,6 +845,9 @@ def write_main_table(path: Path, cohorts: list[dict]) -> None:
 
 VERDICT_HELP = {
     "SUITABLE": "Meets every criterion for the question asked.",
+    "SUITABLE_CLASS_ONLY": "Meets every criterion, but sample metadata names only the "
+                           "drug class (e.g. 'immunotherapy'), never the agent. The cohort "
+                           "received some drug of that class; which one is unestablished.",
     "INSUFFICIENT_N": "Right kind of data, too few patients (or too few per response arm).",
     "NEEDS_REVIEW": "Metadata present but could not be parsed or counted; check by hand.",
     "SURVIVAL_ONLY": "Survival recorded but no response call.",
@@ -896,7 +922,7 @@ HTML_JS = """
 
 
 def _badge(verdict: str) -> str:
-    cls = {"SUITABLE": "b-ok", "INSUFFICIENT_N": "b-warn", "NEEDS_REVIEW": "b-warn",
+    cls = {"SUITABLE": "b-ok", "SUITABLE_CLASS_ONLY": "b-ok", "INSUFFICIENT_N": "b-warn", "NEEDS_REVIEW": "b-warn",
            "SURVIVAL_ONLY": "b-warn", "NO_RESPONSE_LABELS": "b-warn",
            "THERAPY_UNCONFIRMED": "b-bad", "WRONG_SAMPLE_TYPE": "b-bad",
            "WRONG_ORGANISM": "b-bad"}.get(verdict, "b-n")
@@ -1055,7 +1081,8 @@ COHORT_COLS = [
     "gse_accession", "title", "objective", "metadata_source",
     "pubmed_id", "pubmed_url", "doi", "pmcid",
     "n_samples", "n_patients", "n_patients_basis", "organism", "platform", "omics_type", "processing_level",
-    "drug_matched", "drug_evidence_field", "drug_evidence_string",
+    "drug_matched", "drug_evidence_level", "drug_evidence_field", "drug_evidence_string",
+    "drug_class_evidence_string",
     "sample_type", "heterogeneous_sample_types", "biopsy_timing",
     "has_response_labels", "response_field", "response_counts_raw",
     "n_responder_strict", "n_nonresponder_strict", "n_responder_dcb", "n_nonresponder_dcb",
@@ -1192,10 +1219,22 @@ def run(args: argparse.Namespace, argv: list[str]) -> int:
     query = record["query"]
     d = query["defaults"]
 
-    # Stage 2/3: search + summarize
-    n_matched, uids = esearch(fetcher, term)
-    print(f"search: {n_matched} series matched; summarizing {len(uids)}")
-    candidates = esummary(fetcher, uids)
+    # Stage 2/3: search + summarize. Explicit accessions skip the search and
+    # are looked up directly -- used by the gold-set harness and for targeted
+    # re-runs, where the question is whether one known series scores correctly.
+    if getattr(args, "accessions", None):
+        accs = [a.strip() for a in args.accessions.split(",") if a.strip()]
+        uids = []
+        for a in accs:
+            _, found = esearch(fetcher, f"{a}[Accession] AND gse[Entry Type]")
+            uids.extend(found[:1])
+        n_matched = len(uids)
+        print(f"accessions: {len(accs)} supplied; search stage skipped")
+        candidates = esummary(fetcher, uids) if uids else []
+    else:
+        n_matched, uids = esearch(fetcher, term)
+        print(f"search: {n_matched} series matched; summarizing {len(uids)}")
+        candidates = esummary(fetcher, uids)
     for c in candidates:
         c["prefilter"] = "pass" if c["n_samples"] >= d["min_patients_total"] else "n_samples_below_min"
         c["characterized"] = False
@@ -1204,6 +1243,7 @@ def run(args: argparse.Namespace, argv: list[str]) -> int:
 
     # Stage 4: characterize, first MAX_SERIES only; SuperSeries expand to SubSeries.
     drug_re = _term_regex([t["term"] for t in record["search_terms"].get("drug", [])])
+    drug_class_re = _term_regex(query.get("drug_class_terms", []))
     # Order: series with a linked PubMed ID first, then the rest; esearch order within each.
     queue = [c["gse_accession"] for c in passing if c["pubmed_ids"]] + \
             [c["gse_accession"] for c in passing if not c["pubmed_ids"]]
@@ -1232,7 +1272,8 @@ def run(args: argparse.Namespace, argv: list[str]) -> int:
         except (requests.RequestException, RuntimeError, OSError, EOFError) as exc:
             print(f"  metadata fetch failed: {exc}")
             fetched = {"series": {}, "samples": [], "metadata_source": f"failed: {type(exc).__name__}"}
-        samples = [annotate_sample(s, rules, drug_re, query["organism"]) for s in fetched["samples"]]
+        samples = [annotate_sample(s, rules, drug_re, query["organism"], drug_class_re)
+                   for s in fetched["samples"]]
         series = fetched["series"]
         meta = {**meta, "metadata_source": fetched["metadata_source"]}
         meta.setdefault("title", (series.get("!Series_title") or [""])[0])
@@ -1306,6 +1347,7 @@ def run(args: argparse.Namespace, argv: list[str]) -> int:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Find analyzable patient cohorts in NCBI GEO.")
     p.add_argument("--question", help="the user's natural-language question, recorded verbatim")
+    p.add_argument("--accessions", help="comma-separated GSE accessions; skips the search stage")
     p.add_argument("--disease")
     p.add_argument("--drug")
     p.add_argument("--omics", help="see rules/omics.tsv")

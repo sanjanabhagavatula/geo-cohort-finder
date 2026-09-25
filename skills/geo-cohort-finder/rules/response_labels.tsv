@@ -23,3 +23,14 @@ not available	NOT_AVAILABLE
 not evaluable	NOT_AVAILABLE
 ne	NOT_AVAILABLE
 unknown	NOT_AVAILABLE
+prcr	PR_OR_CR
+pr/cr	PR_OR_CR
+cr/pr	PR_OR_CR
+crpr	PR_OR_CR
+pr or cr	PR_OR_CR
+sdpd	SD_OR_PD
+sd/pd	SD_OR_PD
+pd/sd	SD_OR_PD
+unk	NOT_AVAILABLE
+not assessed	NOT_AVAILABLE
+not reported	NOT_AVAILABLE

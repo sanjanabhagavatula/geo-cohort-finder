@@ -1,0 +1,9 @@
+gse_accession	drug	disease	expected_verdict	why	verified
+GSE159067	pembrolizumab	HNSCC	SUITABLE_CLASS_ONLY	102 patients, full RECIST in 'best response on immunotherapy (recist)'; metadata and paper both say only PD-1/PD-L1 inhibitors, never the agent	yes
+GSE91061	nivolumab	melanoma	THERAPY_UNCONFIRMED	65 patients (Pt1_Pre/Pt1_On), response present incl. merged PRCR label, but no drug or class term in sample metadata	yes
+GSE78220	pembrolizumab	melanoma	SUITABLE	27 patients, field 'anti-pd-1 response', CR 5 / PR 10 / PD 13, no SD so both binarizations agree	yes
+GSE200996	pembrolizumab	HNSCC	THERAPY_UNCONFIRMED	30 patients, pre/post-Tx states; treatment named in the paper only	yes
+GSE288199	pembrolizumab	HNSCC	THERAPY_UNCONFIRMED	35 patients, single-cell VDJ/GEX/ADT; anti-PD-1 trial NCT04080804 named in the paper only	yes
+TODO-cellline		HNSCC	WRONG_SAMPLE_TYPE	cell-line-only series; add a real accession	no
+TODO-smalln			INSUFFICIENT_N	response labels present but below the patient threshold; add a real accession	no
+TODO-survival			SURVIVAL_ONLY	OS/PFS recorded, no response call; add a real accession	no

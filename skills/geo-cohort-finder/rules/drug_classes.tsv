@@ -1,0 +1,9 @@
+drug	class_terms
+pembrolizumab	immunotherapy;immune checkpoint;checkpoint inhibitor;anti-PD-1;anti-PD1;PD-1 inhibitor;PD-1/PD-L1;ICI
+nivolumab	immunotherapy;immune checkpoint;checkpoint inhibitor;anti-PD-1;anti-PD1;PD-1 inhibitor;PD-1/PD-L1;ICI
+atezolizumab	immunotherapy;immune checkpoint;checkpoint inhibitor;anti-PD-L1;PD-L1 inhibitor;PD-1/PD-L1;ICI
+durvalumab	immunotherapy;immune checkpoint;checkpoint inhibitor;anti-PD-L1;PD-L1 inhibitor;ICI
+ipilimumab	immunotherapy;immune checkpoint;checkpoint inhibitor;anti-CTLA-4;CTLA-4 inhibitor;ICI
+cisplatin	chemotherapy;platinum;platinum-based;chemoradiation;chemoradiotherapy
+carboplatin	chemotherapy;platinum;platinum-based;chemoradiation
+cetuximab	anti-EGFR;EGFR inhibitor;targeted therapy
