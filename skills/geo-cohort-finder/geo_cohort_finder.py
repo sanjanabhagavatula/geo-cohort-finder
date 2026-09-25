@@ -94,6 +94,9 @@ RESPONSE_FIELD_PAT = re.compile(
 SURVIVAL_FIELD_PAT = re.compile(r"\bos\b|\bpfs\b|surviv|progression.free", re.I)
 TIMEPOINT_FIELD_PAT = re.compile(r"time ?point|\bstate\b|treatment status|visit", re.I)
 PATIENT_ID_PAT = re.compile(r"patient|subject|donor|case ?id|participant", re.I)
+# Fields whose names match above but which hold clinical values, not IDs.
+PATIENT_ID_EXCLUDE = re.compile(
+    r"diagnos|histolog|status|outcome|age|sex|gender|stage|grade|type|site", re.I)
 
 RESPONSE_VALUE_RULES = [
     ("CR", r"^\s*(CR|complete response|complete remission)\s*$"),
@@ -120,6 +123,27 @@ TIMEPOINT_VALUE_RULES = [
 ]
 
 RECIST = {"CR", "PR", "SD", "PD"}
+
+# RULES: patient identifiers encoded in sample titles. Deposited titles carry
+# the patient far more often than any characteristics field does, and unlike a
+# count quoted in an abstract this yields a per-sample mapping -- so repeated
+# timepoints from one patient collapse correctly.
+PATIENT_TITLE_RULES = [
+    r"\bpatient (?:number |no\.? |#)?(\d{1,4})\b",
+    r"\b(?:subject|donor|case)[ _#-]?(\w{1,6})\b",
+    r"^(Pt[ _-]?\d{1,4})\b",
+    r"^(P\d{1,4})\b",
+    r"^([A-Z]{1,4}[-_]?\d{1,4})[ _-]",
+]
+
+
+def patient_from_title(title):
+    """Extract a patient identifier from a sample title, or '' if none."""
+    for pat in PATIENT_TITLE_RULES:
+        m = re.search(pat, title, re.I)
+        if m:
+            return re.sub(r"[ _-]", "", m.group(1)).upper()
+    return ""
 
 
 # --------------------------------------------------------------------------
@@ -304,8 +328,18 @@ def characterize(gse, soft_text, query):
             resp_field = f
         if tp_field is None and TIMEPOINT_FIELD_PAT.search(f):
             tp_field = f
-        if pid_field is None and PATIENT_ID_PAT.search(f):
+        if (pid_field is None and PATIENT_ID_PAT.search(f)
+                and not PATIENT_ID_EXCLUDE.search(f)):
             pid_field = f
+
+    if pid_field:
+        vals = [dict(s["chars"]).get(pid_field, "") for s in samples]
+        nonblank = [v for v in vals if v]
+        distinct = len(set(nonblank))
+        too_uniform = len(samples) > 2 and distinct < max(2, 0.2 * len(samples))
+        too_long = nonblank and (sum(len(v) for v in nonblank) / len(nonblank)) > 20
+        if too_uniform or too_long:
+            pid_field = None
 
     has_survival = any(SURVIVAL_FIELD_PAT.search(f)
                        for s in samples for f, _ in s["chars"])
@@ -320,10 +354,15 @@ def characterize(gse, soft_text, query):
         d = dict(s["chars"])
         raw = "; ".join(f"{f}: {v}" for f, v in s["chars"])
         resp_raw = d.get(resp_field, "") if resp_field else ""
+        pid = (d.get(pid_field, "") if pid_field else "") or \
+            patient_from_title(s["title"])
         row = {
             "gse_accession": gse,
             "gsm_accession": s["gsm"],
-            "patient_id": d.get(pid_field, "") if pid_field else "",
+            "patient_id": pid,
+            "patient_id_source": ("characteristics" if pid_field and
+                                  d.get(pid_field) else
+                                  "title" if pid else "none"),
             "source_name": s["source"],
             "raw_characteristics": raw,
             "response_raw": resp_raw,
@@ -371,6 +410,8 @@ def characterize(gse, soft_text, query):
         "accession": gse,
         "n_samples": n_samples,
         "n_patients": n_patients,
+        "n_patients_source": ("characteristics" if pid_field else
+                              "sample titles" if n_patients else "unavailable"),
         "sample_type": dominant_type,
         "sample_type_breakdown": types,
         "mixed_cohort": len([t for t, c in types.items() if c >= 3]) > 1,
@@ -664,7 +705,7 @@ def main():
     (out / "reproducibility").mkdir(parents=True, exist_ok=True)
 
     write_tsv(out / "tables" / "cohorts.tsv", cohorts, [
-        "accession", "n_samples", "n_patients", "sample_type", "mixed_cohort",
+        "accession", "n_samples", "n_patients", "n_patients_source", "sample_type", "mixed_cohort",
         "therapy_confirmed", "therapy_evidence_level", "therapy_evidence_n",
         "response_field",
         "response_counts_raw", "response_needs_review", "response_recorded_unknown",
@@ -674,7 +715,7 @@ def main():
         "pub_n_patients_mentions", "pub_quote", "verdict", "verdict_reason"])
     write_tsv(out / "tables" / "samples.tsv", sample_rows, [
         "gse_accession", "gsm_accession", "patient_id", "source_name",
-        "raw_characteristics", "response_raw", "response_mapped",
+        "patient_id_source", "raw_characteristics", "response_raw", "response_mapped",
         "timepoint", "sample_type"])
 
     stats = {"n_matched": n_matched, "n_deep_fetched": len(cohorts)}
