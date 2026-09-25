@@ -133,8 +133,13 @@ GENERIC_CELL_VALUE = re.compile(r"\b(cells?|primary|patient|tissue|blood|none|n/
 SINGLE_CELL = re.compile(r"single[- ]cell|scrna|snrna|\b10x\b|chromium", re.I)
 PATIENT_ID_KEY = re.compile(
     r"^(patient|subject|donor|individual|case)([ _-]?(id|identifier|number|no\.?|#))?$", re.I)
+# Hard excludes: quantities that are not a response call, whatever else the
+# field name says. "pd-1"/"pd-l1" are deliberately NOT here -- Hugo et al.
+# (GSE78220) name the field "anti-pd-1 response", a genuine RECIST call, and
+# excluding the marker name discarded it. A field naming the marker without a
+# response token fails the token test anyway.
 RESPONSE_KEY_EXCLUDE = re.compile(
-    r"surviv|\bpfs\b|\bos\b|\bdfs\b|\btime\b|\bdays?\b|\bmonths?\b|\bdate\b|duration|pd-?1|pd-?l1", re.I)
+    r"surviv|\bpfs\b|\bos\b|\bdfs\b|\btime\b|\bdays?\b|\bmonths?\b|\bdate\b|duration", re.I)
 SURVIVAL_KEY = re.compile(
     r"surviv|\bos\b|\bpfs\b|\bdfs\b|vital[ _]status|\bdeath\b|\bdeceased\b|follow[ -]?up", re.I)
 TIMEPOINT_KEY = re.compile(
@@ -491,7 +496,8 @@ def is_response_field(key: str, rules: Rules) -> bool:
     k = _norm(key)
     if RESPONSE_KEY_EXCLUDE.search(k):
         return False
-    return any(k == f or k.startswith(f + " ") or k.startswith(f + "(") for f in rules.response_fields)
+    return any(k == f or k.startswith(f + " ") or k.startswith(f + "(")
+               or k.endswith(" " + f) for f in rules.response_fields)
 
 
 def map_response(value: str, rules: Rules) -> str:
@@ -499,10 +505,26 @@ def map_response(value: str, rules: Rules) -> str:
     return rules.response_labels.get(_norm(value), "NEEDS_REVIEW")
 
 
+# Patient identifiers encoded in sample titles. Submitters record the patient
+# in the title far more often than in a characteristics field, and unlike a
+# count quoted in an abstract this gives a per-sample mapping -- so repeated
+# timepoints from one patient collapse instead of being counted twice.
+PATIENT_TITLE_RULES = [
+    re.compile(r"\bpatient (?:number |no\.? |#)?(\d{1,4})\b", re.I),
+    re.compile(r"\b(?:subject|donor|case)[ _#-]?(\w{1,6})\b", re.I),
+    re.compile(r"^(Pt[ _-]?\d{1,4})(?!\d)", re.I),
+    re.compile(r"^(P\d{1,4})(?!\d)"),
+]
+
+
 def patient_id(sample: dict) -> Optional[str]:
     for k, v in sample["characteristics"].items():
         if PATIENT_ID_KEY.match(k.strip()) and v.strip():
             return v.strip()
+    for pat in PATIENT_TITLE_RULES:
+        m = pat.search(sample.get("title", "") or "")
+        if m:
+            return re.sub(r"[ _-]", "", m.group(1)).upper()
     return None
 
 
@@ -592,7 +614,10 @@ def summarize_series(acc: str, meta: dict, samples: list[dict], query: dict) -> 
     n_patients: Optional[int] = None
     basis = "unknown"
     if usable and all(ids):
-        n_patients, basis = len(set(ids)), "patient_id"
+        from_title = any(not any(PATIENT_ID_KEY.match(k.strip()) for k in s["characteristics"])
+                         for s in usable)
+        n_patients = len(set(ids))
+        basis = "patient_id_from_title" if from_title else "patient_id"
     elif usable and not any(ids) and not any(s["timepoint"] for s in usable) \
             and not SINGLE_CELL.search(series_text):
         n_patients, basis = len(usable), "assumed_one_per_sample"
