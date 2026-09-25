@@ -2,10 +2,12 @@
 name: geo-cohort-finder
 description: >-
   Find analyzable human patient cohorts in NCBI GEO from a natural-language
-  research question. Expands drug and disease synonyms, searches GEO, parses
-  sample-level metadata, and returns a dataframe of candidate studies with
-  patient counts, sample type, treatment exposure and treatment-response
-  labels. Discovery and triage only; hands accessions to downstream skills.
+  research question. Records the question and its parsed query, expands drug
+  and disease synonyms, searches GEO, parses sample-level metadata from GEO
+  series matrix files, cross-checks the linked publication, and returns a
+  dataframe of candidate studies with patient counts, sample type, treatment
+  exposure and treatment-response labels. Discovery and triage only; hands
+  accessions to downstream skills.
 license: MIT
 metadata:
   version: "0.1.0"
@@ -19,11 +21,17 @@ metadata:
     - metadata
     - oncology
   inputs:
-    - name: query
+    - name: question
       type: string
       format:
         - text
-      description: Natural-language research question, or explicit --drug/--disease flags
+      description: The user's natural-language research question, recorded verbatim
+      required: true
+    - name: query
+      type: flags
+      format:
+        - cli
+      description: Typed query converted from the question by the agent (--drug, --disease, --omics, --objective, ...)
       required: true
   outputs:
     - name: report
@@ -57,7 +65,7 @@ metadata:
     - path: demo_data/samples_hnscc.json
       description: Cached sample-level metadata, offline
   endpoints:
-    cli: python skills/geo-cohort-finder/geo_cohort_finder.py --query "{query}" --output {output_dir}
+    cli: python skills/geo-cohort-finder/geo_cohort_finder.py --question "{question}" --disease "{disease}" --output {output_dir}
   openclaw:
     requires:
       bins:
@@ -119,13 +127,17 @@ experiments as patient cohorts.
 
 ## Core Capabilities
 
-1. Parse a natural-language question into a typed query.
-2. Expand drug and disease terms from an editable synonym table.
+1. Record the natural-language question verbatim alongside the typed query the
+   agent converted it into.
+2. Expand drug and disease terms from an editable synonym table **before** the
+   search runs, and record every term used and where it came from.
 3. Search GEO via NCBI E-utilities and retrieve series-level summaries.
-4. Fetch sample-level metadata for surviving candidates.
-5. Classify sample type, patient count, treatment exposure and response labels
+4. Fetch sample-level metadata for surviving candidates from GEO series matrix
+   files.
+5. Cross-check each series against its linked publication where one exists.
+6. Classify sample type, patient count, treatment exposure and response labels
    against explicit rules.
-6. Emit a suitability verdict per series, with the reason and the verbatim
+7. Emit a suitability verdict per series, with the reason and the verbatim
    metadata string behind it.
 
 ## Scope
@@ -156,32 +168,64 @@ population, and other user-specified biological constraints.
 safely expanded from an explicitly provided concept. Do not invent missing
 biological or clinical constraints.**
 
-The parsed query is printed back before the search runs:
+### Question → query conversion (recorded)
+
+The agent converts the natural-language question into a typed query and passes
+both to the script: the question verbatim via `--question`, the criteria via
+flags. The script never re-interprets the question; it records it. Both are
+written to `reproducibility/query.json` and printed in the report header, so a
+reader can check the conversion.
 
 ```text
-drug:          pembrolizumab → [Keytruda, MK-3475, anti-PD-1, pembro]
-cancer_type:   HNSCC → [head and neck squamous, SCCHN, oral cavity carcinoma, ...]
+question:      "Analyze pembrolizumab response in HNSCC."
+drug:          pembrolizumab
+disease:       HNSCC
 omics:         unspecified
-objective:     treatment response
+objective:     response          (response | discovery; see Suitability verdicts)
 organism:      Homo sapiens
-min_patients:  20
-sample_type:   patient tumor
+sample_type:   patient_tumor
 ```
+
+### Search term expansion (recorded)
+
+Before the search runs, each drug and disease term is expanded to its synonyms.
+Expansions come from the editable table `rules/synonyms.tsv`; the agent may add
+further terms with `--extra-terms`. Every term is recorded with its source, and
+the expansion is printed before any network call:
+
+```text
+disease: HNSCC
+  HNSCC                                     user
+  head and neck cancer                      rules/synonyms.tsv
+  head and neck squamous cell carcinoma     rules/synonyms.tsv
+  oral cancer                               rules/synonyms.tsv
+  SCCHN                                     rules/synonyms.tsv
+drug: pembrolizumab
+  pembrolizumab                             user
+  Keytruda                                  rules/synonyms.tsv
+  MK-3475                                   rules/synonyms.tsv
+```
+
+The same list goes to `reproducibility/query.json` and to the exact search
+string in `reproducibility/esearch_terms.txt`. A term not in the table and not
+supplied by the agent is not searched.
 
 ## Workflow
 
 ```text
 "Analyze pembrolizumab response in HNSCC"
         ▼
-   LLM / Agent  ── slot-filling only ──▶ typed query
+   LLM / Agent  ── question → typed query ──▶ --question + flags
         ▼
    geo_cohort_finder.py
         │
-        ├── 1. synonym expansion        (rules table)
-        ├── 2. broad search             (esearch, one call)
-        ├── 3. series summaries         (esummary, batched)
-        ├── 4. deep fetch               (sample characteristics, survivors only)
-        └── 5. suitability scoring      (rules table)
+        ├── 0. record                   (question + typed query → query.json)
+        ├── 1. expand                   (rules/synonyms.tsv, recorded)
+        ├── 2. search                   (esearch, one call)
+        ├── 3. summarize                (esummary, batched)
+        ├── 4. characterize             (series matrix, first MAX_SERIES only)
+        ├── 5. publications             (PubMed / Europe PMC cross-check)
+        └── 6. score                    (rules tables)
         ▼
    output/  report.md · result.json · tables/ · reproducibility/
         ▼
@@ -193,12 +237,30 @@ sample_type:   patient tumor
 Stages have very different costs and failure modes, so each writes its output
 to disk and later stages read from it. A run can resume from any stage.
 
-| Stage | Method | Cost | Output |
+| Stage (`--stage`) | Method | Cost | Output |
 |---|---|---|---|
-| Broad search | `esearch` on `gds`, `GSE[ETYP]` | one call | `tables/candidates.tsv` |
-| Series summaries | `esummary` on `gds`, batched | ~1 call per 100 | `tables/candidates.tsv` |
-| Deep fetch | per-series sample metadata | seconds each | `tables/samples.tsv` |
-| Scoring | local rules | instant | `tables/cohorts.tsv` |
+| `record` | local | instant | `reproducibility/query.json` |
+| `expand` | `rules/synonyms.tsv` | instant | `reproducibility/query.json`, `esearch_terms.txt` |
+| `search` | `esearch` on `gds`, `GSE[ETYP]` | one call | `tables/candidates.tsv` |
+| `summarize` | `esummary` on `gds`, batched | ~1 call per 100 | `tables/candidates.tsv` |
+| `characterize` | series matrix file per series | seconds each | `tables/samples.tsv` |
+| `publications` | PubMed + Europe PMC per linked PMID | ~3 calls per series | `tables/publications.tsv` |
+| `score` | local rules | instant | `tables/cohorts.tsv` |
+
+**Series cap.** Only the first `MAX_SERIES` candidates (default **10**) that
+pass the prefilter are characterized and cross-checked. Candidates are taken in
+the order `esearch` returns them; the ordering, the cap and the number of
+candidates not characterized are all stated in the report. Raise the cap with
+`--max-series` once the pipeline is validated.
+
+**Prefilter.** Before the cap is applied, candidates are dropped only for
+`n_samples < MIN_PATIENTS_TOTAL` (a patient contributes at least one sample, so
+this cannot drop a qualifying cohort) and for being a SuperSeries whose
+SubSeries are already in the candidate list.
+
+**Rate limit.** No NCBI API key is used. All E-utilities calls are throttled to
+at most 3 requests per second (≥ 0.34 s apart) and send the `tool` parameter
+(and `email` if `--email` or `NCBI_EMAIL` is set), as NCBI requests.
 
 Every network response is cached on disk keyed by accession. Re-runs do not
 re-fetch.
@@ -206,20 +268,29 @@ re-fetch.
 ## CLI Reference
 
 ```bash
-# Standard usage
-python geo_cohort_finder.py --query "pembrolizumab response in HNSCC" --output output/
-
-# Explicit criteria
-python geo_cohort_finder.py --drug pembrolizumab --disease HNSCC --omics rna-seq
+# Standard usage: question recorded verbatim, typed query as flags
+python geo_cohort_finder.py \
+    --question "Analyze pembrolizumab response in HNSCC." \
+    --drug pembrolizumab --disease HNSCC --objective response \
+    --output output/
 
 # Discovery without a drug
-python geo_cohort_finder.py --disease HNSC --omics transcriptomic --min-patients 30
+python geo_cohort_finder.py \
+    --question "List GEO datasets on HNSC with transcriptomic data." \
+    --disease HNSC --omics transcriptomic --objective discovery --min-patients 30
+
+# Add search terms beyond the synonym table (recorded as source: agent)
+python geo_cohort_finder.py --question "..." --disease HNSCC \
+    --extra-terms "oropharyngeal carcinoma;laryngeal carcinoma"
+
+# Characterize more than the default 10 series
+python geo_cohort_finder.py --question "..." --disease HNSCC --max-series 50
 
 # Demo mode (cached records, no network)
 python geo_cohort_finder.py --demo
 
 # Resume from a completed stage
-python geo_cohort_finder.py --resume --stage characterize
+python geo_cohort_finder.py --resume --stage characterize --output output/
 
 # Via ClawBio runner
 python clawbio.py run geo-cohort-finder --demo
@@ -240,13 +311,16 @@ output tree so the report format can be inspected offline.
 ### Search construction
 
 The broad search targets the `gds` database, restricted to `GSE[ETYP]` and
-`Homo sapiens[Organism]`, with expanded disease and drug terms joined by `OR`
-and modality mapped to a `[DataSet Type]` filter.
+`Homo sapiens[Organism]`. The expanded disease terms are joined by `OR`, as are
+the expanded drug terms; the disease group and drug group are joined by `AND`.
+Multi-word terms are quoted. Modality is mapped to a `[DataSet Type]` filter.
+The exact string sent is saved to `reproducibility/esearch_terms.txt`.
 
 Drug terms are **not** used to confirm treatment. A drug named in a series
 summary is a candidate signal only. **Do not assume that a dataset is suitable
 merely because its title or description mentions the requested therapy or
-cancer.** Confirmation comes from sample-level metadata in the deep fetch.
+cancer.** Confirmation comes from sample-level metadata in the `characterize`
+stage.
 
 ### Domain decisions
 
@@ -260,36 +334,61 @@ Printed in the report header on every run.
 ```text
 MIN_PATIENTS_TOTAL      20
 MIN_PATIENTS_PER_ARM    10
-MAX_SERIES_DEEP_FETCH   200
+MAX_SERIES              10
+NCBI_MAX_REQ_PER_SEC    3
 EXCLUDE_SAMPLE_TYPES    cell line, PDX, organoid, xenograft
 ORGANISM                Homo sapiens
 ```
 
 #### Sample-type classification
 
-Applied to sample-level metadata first, falling back to series text.
+Applied to sample-level metadata first, falling back to series text. Rows are
+tested **in precedence order**; the first matching row wins. Model and cell-line
+patterns come before patient patterns so that, for example, "patient-derived
+xenograft" is classed as `model`, not `patient_tumor`.
 
-| Pattern in `source_name` / `characteristics` | Class |
-|---|---|
-| `tumor biopsy`, `patient`, `primary tumor`, `FFPE`, `resection` | `patient_tumor` |
-| `cell line`, named lines (`CAL27`, `FaDu`, `SCC-25`, `HN-SCC-*`) | `cell_line` |
-| `PDX`, `xenograft`, `organoid` | `model` |
-| `siRNA`, `shRNA`, `knockout`, `overexpress`, `treated ... for Nh` | `perturbation` |
-| no match | `NEEDS_REVIEW` |
+| Precedence | Pattern in `source_name` / `characteristics` | Class |
+|---|---|---|
+| 1 | `PDX`, `patient-derived xenograft`, `xenograft`, `organoid` | `model` |
+| 2 | a `cell line:` characteristic key; the phrase `cell line`; a name in `rules/cell_lines.tsv` | `cell_line` |
+| 3 | `siRNA`, `shRNA`, `knockout`, `overexpress`, `treated ... for Nh` | `perturbation` |
+| 4 | `tumor biopsy`, `patient`, `primary tumor`, `FFPE`, `resection` | `patient_tumor` |
+| — | no match | `NEEDS_REVIEW` |
+
+Named cell lines (`CAL27`, `FaDu`, `SCC-25`, ...) live in `rules/cell_lines.tsv`,
+not in this document, so other cancer types can be added without editing code.
 
 #### Response label mapping
 
-Matched case-insensitively against sample characteristics. The verbatim source
-string and its field name are retained for every mapped label.
+Response labels are matched **only within response fields**, and **only as a
+whole value**. Substring matching across all characteristics is not used: it
+would read `PD` inside `anti-PD-1` or `PD-L1` as progressive disease, and
+`progression` inside `progression-free survival` as a response call.
 
-| Source string | Mapped |
+1. **Find response fields.** A characteristic is a response field only if its
+   key (the text before `:` in `characteristics_ch1`) matches, case-insensitively,
+   one of: `response`, `best response`, `best overall response`, `BOR`,
+   `RECIST`, `clinical response`, `treatment response`, `responder`,
+   `response status`, `clinical benefit`. The list lives in
+   `rules/response_fields.tsv`. Keys containing `survival`, `PFS`, `OS`, `time`,
+   `days`, `months` or `PD-1`/`PD-L1` are never response fields.
+2. **Match the whole value.** The value (the text after `:`), trimmed and
+   case-folded, must equal a source string below exactly. `PR` matches
+   `PR`; it does not match `PR (confirmed)` or `PRE`.
+3. **Otherwise `NEEDS_REVIEW`.** A response field whose value does not match
+   exactly is recorded verbatim with `response_mapped = NEEDS_REVIEW`. Extend
+   the table; do not loosen the match.
+
+The verbatim value and its field name are retained for every sample.
+
+| Source string (whole value) | Mapped |
 |---|---|
 | `CR`, `complete response` | `CR` |
 | `PR`, `partial response` | `PR` |
 | `SD`, `stable disease` | `SD` |
-| `PD`, `progressive disease`, `progression` | `PD` |
-| `R`, `responder`, `response: yes`, `benefit` | `RESPONDER_UNSPECIFIED` |
-| `NR`, `non-responder`, `nonresponder`, `response: no` | `NONRESPONDER_UNSPECIFIED` |
+| `PD`, `progressive disease` | `PD` |
+| `R`, `responder`, `yes` (in a response field) | `RESPONDER_UNSPECIFIED` |
+| `NR`, `non-responder`, `nonresponder`, `no` (in a response field) | `NONRESPONDER_UNSPECIFIED` |
 | `sensitive` / `resistant` | `SENSITIVE` / `RESISTANT` |
 | anything else | `NEEDS_REVIEW` |
 
@@ -317,16 +416,37 @@ primary labels and the derived groups are marked as derived.
 
 #### Suitability verdicts
 
-| Verdict | Criteria |
-|---|---|
-| `SUITABLE` | therapy confirmed in sample metadata AND response labels present AND `n_patients >= MIN_PATIENTS_TOTAL` AND both arms `>= MIN_PATIENTS_PER_ARM` AND `sample_type == patient_tumor` |
-| `SUITABLE_NO_DRUG_FILTER` | as above, drug not requested |
-| `INSUFFICIENT_N` | all criteria met except patient counts |
-| `NO_RESPONSE_LABELS` | patient cohort, therapy confirmed, no outcome annotation |
-| `SURVIVAL_ONLY` | survival recorded, no response call |
-| `WRONG_SAMPLE_TYPE` | `cell_line`, `model` or `perturbation` only |
-| `THERAPY_UNCONFIRMED` | drug in series text only, absent from sample metadata |
-| `NEEDS_REVIEW` | metadata present but unparsed |
+What counts as suitable depends on what was asked. The agent sets `--objective`
+when converting the question:
+
+| Objective | Set when the question... | Example |
+|---|---|---|
+| `response` | asks about response, resistance, responders, or benefit from a therapy | "pembrolizumab response in HNSCC" |
+| `discovery` | asks only which data exist for a disease, modality or therapy | "GEO datasets on HNSC with transcriptomic data" |
+
+Criteria are applied **in the precedence order below; the first verdict whose
+condition holds is assigned.** Every failed criterion, not just the first, is
+listed in `verdict_reason`.
+
+| Order | Verdict | Condition | Applies to |
+|---|---|---|---|
+| 1 | `WRONG_SAMPLE_TYPE` | every sample is `cell_line`, `model` or `perturbation` | both |
+| 2 | `THERAPY_UNCONFIRMED` | a drug was requested and no sample-level field names it (series text only) | both, if drug given |
+| 3 | `SURVIVAL_ONLY` | no response field, but a survival field is present | `response` |
+| 4 | `NO_RESPONSE_LABELS` | no response field and no survival field | `response` |
+| 5 | `NEEDS_REVIEW` | any sample type is `NEEDS_REVIEW`; or (`response`) any response value is `NEEDS_REVIEW`; or `n_patients` is `unknown` | both |
+| 6 | `INSUFFICIENT_N` | `n_patients < MIN_PATIENTS_TOTAL`; or (`response`) an arm `< MIN_PATIENTS_PER_ARM` | both |
+| 7 | `SUITABLE` | none of the above | both |
+
+So for a `discovery` query, `SUITABLE` means: patient tumor samples, drug
+confirmed if one was requested, the requested modality, and at least
+`MIN_PATIENTS_TOTAL` patients. Response labels are not required; whether they
+exist is still reported in `has_response_labels`. For a `response` query,
+`SUITABLE` additionally requires parsed response labels with both arms of the
+`strict` grouping at least `MIN_PATIENTS_PER_ARM`.
+
+**An unknown patient count is `NEEDS_REVIEW`, never a pass.** `n_samples` is not
+substituted for `n_patients` to reach a verdict.
 
 **Metadata that cannot be established is recorded as `unknown` or `null`.
 Missing metadata is never interpreted as a negative result.** A
@@ -343,6 +463,72 @@ Paired designs (pre- and on-treatment biopsies) and single-cell studies both
 inflate sample count relative to patient count, in opposite magnitudes.
 Filtering on `n_samples` is therefore not a proxy for cohort size.
 
+### Sample metadata source: GEO series matrix
+
+Sample-level metadata comes from the series matrix file(s):
+
+```text
+https://ftp.ncbi.nlm.nih.gov/geo/series/GSEnnnnnn/GSExxxxxx/matrix/GSExxxxxx_series_matrix.txt.gz
+```
+
+where `GSEnnnnnn` is the accession with its last three digits replaced by
+`nnn`. Only the header block (lines starting with `!`) is parsed; the
+expression table is not read. From it the skill takes, per sample:
+`!Sample_geo_accession`, `!Sample_title`, `!Sample_source_name_ch1`,
+`!Sample_organism_ch1`, every `!Sample_characteristics_ch1` row (split into
+`key: value`), `!Sample_platform_id`, and `!Series_pubmed_id`.
+
+- **Multiple platforms.** A series run on more than one platform has one matrix
+  file per platform (`GSExxxxxx-GPLyyyy_series_matrix.txt.gz`). All are fetched
+  from the `matrix/` directory listing and their samples combined, with
+  `platform` kept per sample.
+- **SuperSeries** have no matrix of their own. They are reported with
+  `verdict_reason = "SuperSeries; see SubSeries"` and their SubSeries are
+  characterized instead, counted against `MAX_SERIES`.
+- **Missing matrix** (rare, older or unusual series): fall back to the GEO text
+  view `https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSExxxxxx&targ=gsm&form=text&view=brief`
+  and record `metadata_source = geo_text` instead of `series_matrix`.
+
+### Publication cross-check
+
+GEO metadata is often incomplete: response labels, treatment details and
+patient counts frequently appear only in the paper. Where a series links to a
+publication, the skill retrieves it and checks it against the deposited
+metadata.
+
+1. **Find the paper.** PubMed IDs come from `esummary` and
+   `!Series_pubmed_id`. A series with none gets `pub_status = no_linked_pmid`
+   and is otherwise unaffected.
+2. **Retrieve.** For each PMID: PubMed record (title, journal, year, DOI,
+   abstract) via `efetch`; PMCID via `elink`; if the article is open access,
+   full text from Europe PMC
+   (`https://www.ebi.ac.uk/europepmc/webservices/rest/{PMCID}/fullTextXML`).
+   `pub_text_level` records what was obtained: `full_text`, `abstract_only`
+   or `none`. Paywalled full text is never scraped.
+3. **Check** (deterministic text search over what was retrieved, using the same
+   expanded term lists):
+   - `pub_mentions_accession`: the GSE accession appears in the text.
+   - `pub_drug_mentioned`: any expanded drug term appears.
+   - `pub_disease_mentioned`: any expanded disease term appears.
+   - `pub_response_terms`: response vocabulary found (`RECIST`, `responder`,
+     `objective response`, `CR`/`PR`/`SD`/`PD` as whole words).
+   - `pub_patient_count_sentences`: sentences matching
+     `\b\d+\s+(patients|subjects|participants|individuals)\b`, recorded verbatim.
+     No number is parsed out of them automatically.
+4. **Flag disagreements** in `pub_flags`, for example:
+   - `THERAPY_IN_PAPER_ONLY`: verdict is `THERAPY_UNCONFIRMED` but the paper
+     names the drug.
+   - `RESPONSE_IN_PAPER_ONLY`: verdict is `NO_RESPONSE_LABELS` but the paper uses
+     response vocabulary; labels may be in its supplements.
+   - `ACCESSION_NOT_IN_PAPER`: full text retrieved but the GSE is not
+     mentioned; the PubMed link may be to a related rather than source paper.
+
+**The publication check annotates; it never changes a verdict.** Verdicts
+reflect deposited GEO metadata so they can be reproduced exactly. Flags tell the
+user where the paper may resolve a gap. The agent may read the retrieved text to
+explain a flag, and must label anything it reports from that reading as its own
+interpretation of the paper, with the sentence quoted.
+
 ## Example Queries
 
 ```text
@@ -358,32 +544,43 @@ Show me patient RNA-seq cohorts of at least 50 people in bladder cancer.
 # GEO Cohort Finder Report
 
 ## Research Question
-drug: pembrolizumab (+4 synonyms) · disease: HNSCC (+6 synonyms)
-omics: unspecified · objective: treatment response
-defaults: MIN_PATIENTS_TOTAL=20, MIN_PATIENTS_PER_ARM=10
+question: "Analyze pembrolizumab response in HNSCC."
+drug: pembrolizumab (+2 synonyms) · disease: HNSCC (+4 synonyms)
+omics: unspecified · objective: response
+defaults: MIN_PATIENTS_TOTAL=20, MIN_PATIENTS_PER_ARM=10, MAX_SERIES=10
+
+## Search terms
+disease: HNSCC [user] · head and neck cancer · head and neck squamous cell
+carcinoma · oral cancer · SCCHN [rules/synonyms.tsv]
+drug: pembrolizumab [user] · Keytruda · MK-3475 [rules/synonyms.tsv]
 
 ## Search
-784 series matched the broad query. 121 passed the sample-count prefilter.
-121 deep-fetched.
+N series matched the query. M passed the prefilter.
+10 characterized (first 10 in esearch order); M − 10 not characterized.
 
 ## Verdicts
-SUITABLE                 4
-INSUFFICIENT_N          11
-NO_RESPONSE_LABELS      38
-SURVIVAL_ONLY            6
-WRONG_SAMPLE_TYPE       47
-THERAPY_UNCONFIRMED      9
-NEEDS_REVIEW             6
+SUITABLE                 1
+INSUFFICIENT_N           1
+NO_RESPONSE_LABELS       3
+WRONG_SAMPLE_TYPE        3
+THERAPY_UNCONFIRMED      1
+NEEDS_REVIEW             1
 
 ## Suitable cohorts
-| accession | n_pat | n_samp | platform | response field | CR/PR/SD/PD | strict R/NR |
-|-----------|-------|--------|----------|----------------|-------------|-------------|
-| GSEnnnnnn |    36 |     72 | Illumina | response       | 3/8/11/14   | 11 / 25     |
+| accession | paper | n_pat | n_samp | platform | response field | CR/PR/SD/PD | strict R/NR |
+|-----------|-------|-------|--------|----------|----------------|-------------|-------------|
+| GSEnnnnnn | PMID nnnnnnnn | 36 | 72 | Illumina | response | 3/8/11/14 | 11 / 25 |
+
+## Publication flags
+| accession | verdict | pub_text_level | flag |
+|-----------|---------|----------------|------|
+| GSEnnnnnn | NO_RESPONSE_LABELS | full_text | RESPONSE_IN_PAPER_ONLY |
+| GSEnnnnnn | THERAPY_UNCONFIRMED | abstract_only | THERAPY_IN_PAPER_ONLY |
 
 ## Limitations
-- 6 series carry unparsed response strings (NEEDS_REVIEW), listed in tables/samples.tsv.
-- n_patients could not be established for 19 series; reported as unknown.
-- Verdicts reflect deposited metadata only, not the source publications.
+- Only 10 of M candidate series were characterized.
+- 1 series carries unparsed response strings (NEEDS_REVIEW), listed in tables/samples.tsv.
+- Verdicts reflect deposited GEO metadata; publication flags mark where the paper may add information.
 ````
 
 ## Output Structure
@@ -395,25 +592,44 @@ output/
 ├── tables/
 │   ├── candidates.tsv     one row per series, search stage
 │   ├── cohorts.tsv        one row per series, scored
-│   └── samples.tsv        one row per sample, verbatim characteristics
+│   ├── samples.tsv        one row per sample, verbatim characteristics
+│   └── publications.tsv   one row per linked PMID, cross-check results
+├── cache/                 raw network responses (matrix headers, PubMed, Europe PMC)
 └── reproducibility/
     ├── commands.sh
-    ├── query.json         parsed query and expanded synonyms
+    ├── query.json         question verbatim, typed query, expanded terms with sources
     ├── esearch_terms.txt  exact search string sent to NCBI
-    └── environment.yml
+    ├── environment.yml
+    └── checksums.sha256
 ```
 
 ### `tables/cohorts.tsv`
 
 ```text
-gse_accession, title, pubmed_id, n_samples, n_patients,
+gse_accession, title, objective, metadata_source,
+pubmed_id, pubmed_url, doi, pmcid,
+n_samples, n_patients,
 organism, platform, omics_type, processing_level,
 drug_matched, drug_evidence_field, drug_evidence_string,
 sample_type, biopsy_timing,
 has_response_labels, response_field, response_counts_raw,
 n_responder_strict, n_nonresponder_strict,
 n_responder_dcb, n_nonresponder_dcb,
-has_survival, verdict, verdict_reason, ftp_link
+has_survival, verdict, verdict_reason,
+pub_status, pub_text_level, pub_flags, ftp_link
+```
+
+`pubmed_url` is `https://pubmed.ncbi.nlm.nih.gov/{pubmed_id}/`; `doi` and
+`pmcid` come from the PubMed record. All three are `null` when there is no
+linked publication.
+
+### `tables/publications.tsv`
+
+```text
+gse_accession, pubmed_id, pmcid, doi, title, journal, year,
+pub_text_level, pub_mentions_accession, pub_drug_mentioned,
+pub_disease_mentioned, pub_response_terms, pub_patient_count_sentences,
+pub_flags
 ```
 
 ### `tables/samples.tsv`
@@ -430,19 +646,34 @@ can be audited against it.
 
 ```json
 {
+  "question": "Analyze pembrolizumab response in HNSCC.",
   "query": {
     "drug": "pembrolizumab",
-    "drug_synonyms": ["Keytruda", "MK-3475", "anti-PD-1"],
     "disease": "HNSCC",
-    "objective": "treatment response",
+    "objective": "response",
     "omics": null,
-    "defaults": {"min_patients_total": 20, "min_patients_per_arm": 10}
+    "defaults": {"min_patients_total": 20, "min_patients_per_arm": 10, "max_series": 10}
+  },
+  "search_terms": {
+    "disease": [
+      {"term": "HNSCC", "source": "user"},
+      {"term": "head and neck cancer", "source": "rules/synonyms.tsv"},
+      {"term": "head and neck squamous cell carcinoma", "source": "rules/synonyms.tsv"},
+      {"term": "oral cancer", "source": "rules/synonyms.tsv"},
+      {"term": "SCCHN", "source": "rules/synonyms.tsv"}
+    ],
+    "drug": [
+      {"term": "pembrolizumab", "source": "user"},
+      {"term": "Keytruda", "source": "rules/synonyms.tsv"},
+      {"term": "MK-3475", "source": "rules/synonyms.tsv"}
+    ]
   },
   "search": {
     "esearch_term": "...",
-    "n_matched": 784,
-    "n_prefiltered": 121,
-    "n_deep_fetched": 121
+    "n_matched": null,
+    "n_prefiltered": null,
+    "n_characterized": 10,
+    "n_not_characterized": null
   },
   "cohorts": [
     {
@@ -462,7 +693,15 @@ can be audited against it.
         "dcb": {"responder": ["CR", "PR", "SD"], "nonresponder": ["PD"]}
       },
       "verdict": "SUITABLE",
-      "verdict_reason": "therapy confirmed; 36 patients; 11/25 strict"
+      "verdict_reason": "therapy confirmed; 36 patients; 11/25 strict",
+      "publication": {
+        "pubmed_id": "nnnnnnnn",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/nnnnnnnn/",
+        "doi": "10.xxxx/xxxxx",
+        "pub_text_level": "full_text",
+        "pub_mentions_accession": true,
+        "pub_flags": []
+      }
     }
   ],
   "limitations": []
@@ -474,27 +713,31 @@ fabricate values to complete the schema.**
 
 ## Human-Readable Report
 
-`output/report.md` contains: the interpreted research question and the
-defaults in force; the search terms and match counts; a verdict summary; the
-suitable cohorts table; and a limitations section that explicitly reports
+`output/report.md` contains: the question verbatim and the typed query it was
+converted to; the defaults in force; every search term with its source; match
+counts and how many series were not characterized because of `MAX_SERIES`; a
+verdict summary; the suitable cohorts table with paper links; the publication
+flags; and a limitations section that explicitly reports
 unavailable metadata, small cohorts, heterogeneous response definitions,
 unsupported modalities and inaccessible data.
 
 ## Dependencies
 
 - Python >= 3.10, `pandas`, `requests`
-- Network access to `eutils.ncbi.nlm.nih.gov` (see `docs/data-handling.md`)
-- Optional `NCBI_API_KEY` environment variable
+- Network access to `eutils.ncbi.nlm.nih.gov`, `ftp.ncbi.nlm.nih.gov` (over
+  HTTPS) and `www.ebi.ac.uk` (Europe PMC)
+- Optional contact email via `--email` or `NCBI_EMAIL`, sent to NCBI as asked
+  in its usage policy
 
-No credentials are required. An NCBI API key raises the E-utilities rate limit
-from 3 to 10 requests per second and is strongly recommended for interactive
-use.
+No credentials and no NCBI API key are used. E-utilities calls are throttled to
+3 requests per second, the limit without a key. At the default
+`MAX_SERIES = 10` a full run makes on the order of 50 network requests.
 
 ## Gotchas
 
 - **GEO's search index is series-level.** Response labels, treatment and
   patient identifiers live in per-sample `characteristics_ch1` and are
-  invisible to `esearch`. The deep fetch is not optional.
+  invisible to `esearch`. The `characterize` stage is not optional.
 - **`n_samples` is not `n_patients`.** Paired timepoint designs double-count;
   single-cell series report thousands of cells for a few dozen patients.
 - **One GSE can bundle several cohorts** — different treatments, platforms, or
@@ -510,10 +753,22 @@ use.
 - **Free-text response strings are irregular**: `response: PR`,
   `best overall response: partial response`, `RECIST: 1`, `benefit: yes`, `R`.
   The mapping table is the product; extend it rather than loosening matching.
+- **`PD` is also a drug target.** `anti-PD-1`, `PD-L1 status` and
+  `PD-1 inhibitor` appear in treatment fields of exactly the cohorts this skill
+  looks for. Substring matching would call every such sample progressive
+  disease; hence response matching is restricted to response fields and whole
+  values.
+- **"Patient" appears in model names.** "Patient-derived xenograft" and
+  "patient-derived organoid" contain `patient`; sample-type rules are applied in
+  precedence order with models first.
+- **The linked PubMed ID is not always the source paper.** Some series link a
+  later reanalysis or a companion paper. `ACCESSION_NOT_IN_PAPER` flags this
+  when full text is available.
 - **Processing level varies.** Supplementary deposits may be raw counts, FPKM,
   TPM or already-normalized values. A count-based downstream tool cannot
   consume an FPKM-only deposit.
-- **Rate limits bite during demos.** Cache everything; use an API key.
+- **Rate limits bite during demos.** Without an API key NCBI allows 3 requests
+  per second; exceeding it returns HTTP 429. Cache everything and throttle.
 
 ## Safety
 
@@ -539,17 +794,22 @@ inspect the underlying evidence.
 
 The agent's role is **slot-filling and interpretation only**:
 
-1. Extract criteria from the user's question.
+1. Convert the user's question into a typed query: drug, disease, omics,
+   sample type, and `objective` (`response` or `discovery`).
 2. Preserve unspecified criteria as unspecified.
-3. Invoke `geo_cohort_finder.py` with those parameters.
-4. Interpret the structured results.
-5. Communicate supporting evidence, missing information and limitations.
+3. Optionally propose extra search terms via `--extra-terms`; these are
+   recorded with source `agent`.
+4. Invoke `geo_cohort_finder.py` with the question verbatim (`--question`) and
+   the typed query as flags, so the conversion is recorded.
+5. Interpret the structured results, including publication flags.
+6. Communicate supporting evidence, missing information and limitations.
 
 **The agent must not infer that a dataset contains a particular modality,
 treatment, response phenotype or clinical variable unless this is established
 from retrieved metadata.** Classification, mapping and scoring are performed by
-the rules tables above, not by the model. Identical input produces identical
-output.
+the rules tables above, not by the model. Given the same cached network
+responses, identical input produces identical output; GEO itself changes over
+time, so the run date is recorded.
 
 This skill reports which datasets exist and whether they are analyzable. It
 does not assess whether a study is well powered for a given effect size, and a
@@ -579,7 +839,9 @@ Routing rule: questions about *which data exists* come here; questions about
 ## Maintenance
 
 The synonym, sample-type, response-mapping and suitability tables are the
-maintained surface of this skill. Extend them rather than relaxing matching
+maintained surface of this skill. The editable ones live in `rules/`:
+`synonyms.tsv`, `cell_lines.tsv`, `response_fields.tsv` and
+`response_labels.tsv`. Extend them rather than relaxing matching
 logic. Every table change should be accompanied by a gold-set run.
 
 A gold set of hand-curated series with known correct verdicts lives in
@@ -593,7 +855,8 @@ studies. Verdict accuracy against the gold set is the skill's benchmark.
 - Automated response-label harmonization across studies
 - Survival analysis and biomarker replication across independent cohorts
 - Cross-study meta-analysis of concordant molecular signals
-- Automatic identification of associated publications and supplements
+- Parsing response labels and patient counts from publication supplements
+- Raising `MAX_SERIES` beyond 10 once verdicts are validated against the gold set
 - Clinical-trial integration
 
 Cross-study synthesis is deliberately out of scope for this skill. Batch
