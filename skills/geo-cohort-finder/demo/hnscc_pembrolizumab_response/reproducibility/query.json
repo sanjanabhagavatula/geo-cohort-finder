@@ -1,0 +1,120 @@
+{
+  "question": "Which HNSCC cohorts have pembrolizumab responders and non-responders?",
+  "query": {
+    "drug": "pembrolizumab",
+    "disease": "HNSCC",
+    "omics": null,
+    "objective": "response",
+    "organism": "Homo sapiens",
+    "sample_type": "patient_tumor",
+    "defaults": {
+      "min_patients_total": 20,
+      "min_patients_per_arm": 10,
+      "max_series": 10,
+      "ncbi_max_req_per_sec": 3
+    },
+    "drug_class_terms": [
+      "immunotherapy",
+      "immune checkpoint",
+      "checkpoint inhibitor",
+      "anti-PD-1",
+      "anti-PD1",
+      "PD-1 inhibitor",
+      "PD-1/PD-L1",
+      "ICI"
+    ]
+  },
+  "search_terms": {
+    "disease": [
+      {
+        "term": "HNSCC",
+        "source": "user"
+      },
+      {
+        "term": "HNSC",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "SCCHN",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "head and neck cancer",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "head and neck squamous cell carcinoma",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "squamous cell carcinoma of the head and neck",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "oral cancer",
+        "source": "rules/synonyms.tsv"
+      }
+    ],
+    "drug": [
+      {
+        "term": "pembrolizumab",
+        "source": "user"
+      },
+      {
+        "term": "Keytruda",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "MK-3475",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "lambrolizumab",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "immune checkpoint inhibitor",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "immune checkpoint blockade",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "ICI",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "anti-PD-1",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "anti-PD-L1",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "anti-CTLA-4",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "nivolumab",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "atezolizumab",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "durvalumab",
+        "source": "rules/synonyms.tsv"
+      },
+      {
+        "term": "ipilimumab",
+        "source": "rules/synonyms.tsv"
+      }
+    ]
+  },
+  "gds_types": [],
+  "run_date": "2026-09-25T17:55:21+00:00",
+  "skill_version": "0.1.0"
+}

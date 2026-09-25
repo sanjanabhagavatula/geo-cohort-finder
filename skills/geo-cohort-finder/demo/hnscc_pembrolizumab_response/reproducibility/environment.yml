@@ -1,0 +1,5 @@
+name: geo-cohort-finder
+python: "3.13.8"
+platform: "Linux-4.18.0-553.168.1.el8_10.x86_64-x86_64-with-glibc2.28"
+packages:
+  requests: "2.32.5"
